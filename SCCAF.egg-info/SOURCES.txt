@@ -1,0 +1,9 @@
+MANIFEST.in
+README.md
+setup.py
+SCCAF/__init__.py
+SCCAF.egg-info/PKG-INFO
+SCCAF.egg-info/SOURCES.txt
+SCCAF.egg-info/dependency_links.txt
+SCCAF.egg-info/requires.txt
+SCCAF.egg-info/top_level.txt
