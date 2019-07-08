@@ -13,7 +13,10 @@ setup(
         description='Single-Cell Clustering Assessment Framework',
         long_description=readme(),
         packages=find_packages(),
-        install_requires=['numpy', 'pandas', 'scanpy'],
+        install_requires=[
+            'numpy',
+            'pandas',
+            'scanpy==1.3.7'],
         author='Chichau Miau',
         author_email='zmiao@ebi.ac.uk',
         license='MIT'
