@@ -1546,14 +1546,18 @@ def SubsetData(ad, sele, ad_raw):
 		ad1.obs[col] = ad.obs[col]
 	return(ad1)
 
-import plotly
-plotly.tools.set_config_file(world_readable=False,
-							 sharing='private')
-plotly.offline.init_notebook_mode(connected=True)
-import plotly.plotly as py
-import plotly.graph_objs as go
+
+def config_plotly():
+	from plotly import tools, offline
+	tools.set_config_file(world_readable=False, sharing='private')
+	offline.init_notebook_mode(connected=True)
+
 from scanpy.plotting.palettes import *
 def plotly3d(X, cell_types, unique_types, colors = default_20, name = '1'):
+	import plotly.graph_objs as go
+	from plotly import offline
+	config_plotly()
+
 	if len(unique_types) > 20: colors = default_26
 	if len(unique_types) > 26: colors = default_64
 	x,y,z = X[:,1],X[:,2],X[:,3]
@@ -1586,9 +1590,13 @@ def plotly3d(X, cell_types, unique_types, colors = default_20, name = '1'):
 		)
 	)
 	fig = go.Figure(data=data, layout=layout)
-	plotly.offline.iplot(fig, filename=name)
+	offline.iplot(fig, filename=name)
+
 
 def plotly4d(X, c, name = '1', colorscale='Jet'):
+	import plotly.graph_objs as go
+	from plotly import offline
+
 	x,y,z = X[:,1],X[:,2],X[:,3]
 	trace = go.Scatter3d(
 		x=x,
@@ -1611,7 +1619,8 @@ def plotly4d(X, c, name = '1', colorscale='Jet'):
 		)
 	)
 	fig = go.Figure(data=[trace], layout=layout)
-	plotly.offline.iplot(fig, filename=name)
+	offline.iplot(fig, filename=name)
+
 
 def run_slalom():
 	data = slalom.utils.load_txt(dataFile='../write/Hepatocytes_Fetal_noBCE1_exprs.csv',
