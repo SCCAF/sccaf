@@ -35,6 +35,7 @@ from scanpy.plotting.palettes import *
 
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
+from matplotlib import rcParams
 
 # for reading/saving clf model
 from sklearn.mixture import BayesianGaussianMixture
@@ -613,7 +614,7 @@ def plot_markers_scatter(ad, genes, groupby='louvain', save=None):
 
 	dfx1.columns = [0,1,2,3]
 
-	matplotlib.rcParams.update({'font.size': 12})
+	rcParams.update({'font.size': 12})
 	plt.scatter(dfx1[1],dfx1[0],c=dfx1[2],s=dfx1[3]*150.,marker='o')
 	plt.xticks(range(len(genes)),genes,rotation=90)
 	plt.xlabel("Genes",fontsize=22)
