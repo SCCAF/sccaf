@@ -28,13 +28,15 @@ import os
 import seaborn as sns
 
 import scanpy.api as sc
-import scanpy #for clustering
-from scanpy.plotting.palettes import * #for color
+# for clustering
+import scanpy
+# for color
+from scanpy.plotting.palettes import *
 
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 
-from sklearn.externals import joblib # for reading/saving clf model.
+# for reading/saving clf model
 from sklearn.mixture import BayesianGaussianMixture
 from sklearn import metrics
 from sklearn.metrics.pairwise import euclidean_distances, pairwise_distances
