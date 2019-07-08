@@ -16,6 +16,7 @@ setup(
         install_requires=[
             'numpy',
             'pandas',
+            'louvain',
             'scanpy==1.3.7'],
         author='Chichau Miau',
         author_email='zmiao@ebi.ac.uk',
