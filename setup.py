@@ -17,6 +17,7 @@ setup(
             'numpy',
             'pandas',
             'louvain',
+            'plotly',
             'scanpy==1.3.7'],
         author='Chichau Miau',
         author_email='zmiao@ebi.ac.uk',
