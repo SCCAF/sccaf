@@ -575,8 +575,9 @@ def plot_markers(top_markers, topn=10, save=None):
 		plt.axis('off')
 		plt.ylim(topn * 0.2, -0.2)
 	plt.tight_layout()
-	if not save is None:
+	if save:
 		plt.savefig(save)
+	else:
 	plt.show()
 
 def plot_markers_scatter(ad, genes, groupby='louvain', save=None):
@@ -621,7 +622,7 @@ def plot_markers_scatter(ad, genes, groupby='louvain', save=None):
 	plt.ylabel("Clusters",fontsize=22)
 	plt.xlim([-1,len(genes)])
 
-	if not save is None:
+	if save:
 		plt.savefig(save)
 	else:
 		plt.show()
@@ -1162,11 +1163,11 @@ def plot_roc(y_prob, y_test, clf, plot=True, save=False, title ='', colors=None,
 		plt.yticks([0,1])
 		plt.annotate(r'$AUC_{min}: %.3f$'%min_auc, (0.5,0.4), fontsize=fontsize)
 		plt.annotate(r'$AUC_{max}: %.3f$'%max_auc, (0.5,0.3), fontsize=fontsize)
-		if not cvsm is None:
+		if cvsm:
 			plt.annotate("CV: %.3f"%cvsm, (0.5,0.2), fontsize=fontsize)
-		if not acc is None:
+		if acc:
 			plt.annotate("Test: %.3f"%acc, (0.5,0.1), fontsize=fontsize)
-		if not save is False:
+		if save:
 			plt.savefig(save)
 	return(aucs)
 
