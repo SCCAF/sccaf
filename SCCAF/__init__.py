@@ -821,7 +821,8 @@ def test_distance():
 		plt.ylabel('confusion')
 		plt.show()
 
-def plot_heatmap_gray(X, title=''):
+
+def plot_heatmap_gray(X, title='', save=None):
 	plt.clf()
 	fig = plt.figure()
 	ax = fig.add_subplot(111)
@@ -832,6 +833,9 @@ def plot_heatmap_gray(X, title=''):
 	cbaxes = fig.add_axes([1, 0.125, 0.08, 0.76])
 	#'cb = fig.colorbar(cax, cax = cbaxes, ticks=[])
 	cb = fig.colorbar(cax, cax = cbaxes)
+	if save:
+		plt.savefig(save)
+	else:
 	plt.show()
 
 def SCCAF_optimize_all(min_acc=0.9, \
