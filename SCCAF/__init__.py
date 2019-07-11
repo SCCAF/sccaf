@@ -1137,7 +1137,8 @@ def merge_cluster(ad, old_id, new_id, groups):
     #'ad.obs[new_id] = ad.obs[new_id].astype(str)
     return(ad)
 
-def plot_roc(y_prob, y_test, clf, plot=True, save=False, title ='', colors=None, cvsm=None, acc=None, fontsize=16):
+
+def plot_roc(y_prob, y_test, clf, plot=True, save=None, title ='', colors=None, cvsm=None, acc=None, fontsize=16):
 	'''
 	y_prob, y_test, clf, plot=True, save=False, title ='', colors=None, cvsm=None, acc=None, fontsize=16):
 	'''
