@@ -2,8 +2,7 @@ This package implements ....
 
 # Requirements
 
-This package requires Python 3, setuptools and pip3 for installation.
-We will provide eventually a pip installable version.
+This package requires Python 3 and pip3 for installation.
 
 # Installation
 
