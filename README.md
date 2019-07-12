@@ -31,11 +31,11 @@ if your python environment is configured for python 3, then you should be able t
 
 The main method of SCCAF can be applied directly to an [anndata](https://anndata.readthedocs.io/en/stable/) (AnnData is the main data format used by [Scanpy](https://scanpy.readthedocs.io/en/stable/)) object in Python. 
 
-* Before applying SCCAF, please make sure the doublets have been excluded and the batch effect has been effectively regressed. *
+**Before applying SCCAF, please make sure the doublets have been excluded and the batch effect has been effectively regressed.**
 
 ## Assessment of the quality of a clustering
 
-Given a clustering stored in an anndata object `ad` under the key 'louvain', we would like to understand the quality (discrimination between clusters) with SCCAF:
+Given a clustering stored in an anndata object `ad` under the key `louvain`, we would like to understand the quality (discrimination between clusters) with SCCAF:
 
 ```python
 from SCCAF import SCCAF_assessment, plot_roc
@@ -47,7 +47,8 @@ y_prob, y_pred, y_test, clf, cvsm, acc = SCCAF_assessment(ad.X, ad.obs['louvain'
 returned accuracy is in the `acc` variable.
 
 The ROC curve can be plotted:
-```
+
+```python
 plot_roc(y_prob, y_test, clf, cvsm=cvsm, acc=acc)
 ```
 
