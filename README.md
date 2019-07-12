@@ -35,13 +35,13 @@ The main method of SCCAF can be applied directly to an [anndata](https://anndata
 
 ## Assessment of the quality of a clustering
 
-Given a clustering stored in an anndata object `ad` under the key `louvain`, we would like to understand the quality (discrimination between clusters) with SCCAF:
+Given a clustering stored in an anndata object `adata` under the key `louvain`, we would like to understand the quality (discrimination between clusters) with SCCAF:
 
 ```python
 from SCCAF import SCCAF_assessment, plot_roc
 import scanpy as sc
 
-y_prob, y_pred, y_test, clf, cvsm, acc = SCCAF_assessment(ad.X, ad.obs['louvain'], n=100)
+y_prob, y_pred, y_test, clf, cvsm, acc = SCCAF_assessment(adata.X, adata.obs['louvain'], n=100)
 ```
 
 returned accuracy is in the `acc` variable.
