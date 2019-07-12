@@ -28,14 +28,14 @@ if your python environment is configured for python 3, then you should be able t
 
 ## Use with pre-clusterised `anndata` object
 
-The main method of SCCAF can be applied directly to an anndata object in Python:
+The main method of SCCAF can be applied directly to an anndata object in Python provided that it has been previously clustered and that the data is not too batchy (or that it has been batch corrected):
 
 ```
 from SCCAF import SCCAF_optimize_all
 import scanpy.sc as sc
 
 ad = sc.read("path-to-clusterised-and-umapped-anndata-file")
-# Set the initial starting point, assuming that cells where clusterised through louvain.
+# Set the initial starting point, assuming that cells were clusterised through louvain.
 ad.obs['L1_Round0'] = tm.obs['louvain']
 SCCAF_optimize_all(ad=tm, plot=False, min_acc=0.96)
 ```
