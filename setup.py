@@ -18,7 +18,6 @@ setup(
             'numpy',
             'pandas',
             'louvain',
-            'plotly',
             'sklearn',
             'scanpy==1.3.7'],
         author='Chichau Miau',
