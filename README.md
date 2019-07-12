@@ -42,6 +42,7 @@ import scanpy as sc
 
 y_prob, y_pred, y_test, clf, cvsm, acc = SCCAF_assessment(mat, clstr, n=100)
 ```
+
 `mat` is the cell x feature expression matrix, i.e., adata.X, `clstr` is the clustering assignment. 
 And the returned accuracy is in the `acc`. 
 
