@@ -20,7 +20,6 @@
 #
 
 import pandas as pd
-import numpy as np
 from collections import defaultdict
 import louvain
 import scipy
@@ -33,7 +32,6 @@ import scanpy
 # for color
 from scanpy.plotting.palettes import *
 
-import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
 
@@ -1408,11 +1406,8 @@ color_long = ['#e6194b',
 
 # optimize the regress out function
 import numpy as np
-import scipy as sp
-import warnings
 import patsy
 from scipy.sparse import issparse
-from sklearn.utils import sparsefuncs
 from pandas.api.types import is_categorical_dtype
 from anndata import AnnData
 from scanpy import settings as sett
