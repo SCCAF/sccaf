@@ -1646,26 +1646,6 @@ def run_bgpLVM():
 	np.savetxt("../write/Hepatocytes_Fetal_best_GPy.csv", Ynew, delimiter=",")
 	return
 
-def fit_gplvm(adata):
-	import os
-	for i,g in enumerate(adata.var_names):
-		print(g)
-		os.system("bsub python GPy_GPRegression.py write/Hepatocytes_Fetal_noBCEcc_reg.h5 %s -o log -e error"%g)
-
-	Ys = []
-	for i,g in enumerate(adata.var_names):
-		print(i)
-		df = pd.read_csv("GPy/%s.csv"%g,index_col=0, header=None)
-		Ys.append(df[1])
-	Y = np.array(Ys)
-	df100 = pd.DataFrame(Y,index = adata.var_names)
-	ds = pd.Series(df100.values.argmax(1),index=df100.index).sort_values(ascending=False)
-	from sklearn import preprocessing
-	X = preprocessing.scale(df100.loc[ds.index], 1)
-	sns.heatmap(X,yticklabels=False,
-				xticklabels=False, cmap=cm.RdBu_r)
-	plt.xlabel("Pseudotime")
-	plt.ylabel("Genes")
 
 def find_high_resolution(ad, resolution=4, n=100):
     cut = resolution
