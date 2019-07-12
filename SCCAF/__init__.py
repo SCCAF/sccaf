@@ -576,7 +576,7 @@ def plot_markers(top_markers, topn=10, save=None):
 	if save:
 		plt.savefig(save)
 	else:
-	plt.show()
+		plt.show()
 
 def plot_markers_scatter(ad, genes, groupby='louvain', save=None):
 	'''
@@ -763,7 +763,7 @@ def get_z_matrix(ad, id):
                     z[jj,kk] = z[kk,jj] = 1
     return(z)
 
-def test_distance():
+def test_distance(ad):
 	prefix='L1'
 	use_raw=True
 	plot=True
@@ -834,7 +834,7 @@ def plot_heatmap_gray(X, title='', save=None):
 	if save:
 		plt.savefig(save)
 	else:
-	plt.show()
+		plt.show()
 
 def SCCAF_optimize_all(min_acc=0.9, \
                        R1norm_cutoff = 0.5, \
