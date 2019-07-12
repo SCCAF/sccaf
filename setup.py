@@ -12,7 +12,7 @@ setup(
         version='0.0.2',
         description='Single-Cell Clustering Assessment Framework',
         long_description=readme(),
-        long_description_content_type='Markdown',
+        long_description_content_type='text/markdown',
         packages=find_packages(),
         install_requires=[
             'numpy',
