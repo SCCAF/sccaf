@@ -93,7 +93,7 @@ def bhattacharyya_matrix(prob, flags=None):
                 val = -bhattacharyya_distance(df['i'], df['j'])
                 m[i, j] = val
                 m[j, i] = val
-    return (m)
+    return m
 
 
 def binary_accuracy(X, y, clf):
@@ -142,7 +142,7 @@ def run1(ad, key='random', basis='pca', n=0):
     ax = plot_link_scatter(ad, ymat=norm_dist_df, group=key, basis=basis, title='Distance Matrix')
 
     df = pd.DataFrame(y_prob, index=y_test, columns=clf.classes_)
-    return (df)
+    return df
 
 
 def normalize_confmat1(cmat, mod='1'):
@@ -168,7 +168,7 @@ def normalize_confmat1(cmat, mod='1'):
                 xmat[i, j] = xmat[j, i] = max(dmat[i, j] / smat[j], dmat[j, i] / smat[i])
             else:
                 xmat[i, j] = xmat[j, i] = max(dmat[i, j] / smat[i], dmat[j, i] / smat[j])
-    return (xmat)
+    return xmat
 
 
 def normalize_confmat2(cmat):
@@ -190,7 +190,7 @@ def normalize_confmat2(cmat):
     s = np.sum(cmat)
     emat = emat + emat.T
     np.fill_diagonal(emat, 0)
-    return (emat * 1.0 / s)
+    return emat * 1.0 / s
 
 
 def cluster_adjmat(xmat,
@@ -220,7 +220,7 @@ def cluster_adjmat(xmat,
     part = louvain.find_partition(g, louvain.RBConfigurationVertexPartition,
                                   resolution_parameter=resolution)
     groups = np.array(part.membership)
-    return (groups)
+    return groups
 
 
 def msample(x, n, frac):
@@ -270,7 +270,7 @@ def train_test_split_per_type(X, y, n=100, frac=0.8):
     df.columns = ['class']
     c_idx = df.groupby('class').apply(lambda x: msample(x, n=n, frac=frac)).index.get_level_values(None)
     d_idx = ~np.isin(np.arange(len(y)), c_idx)
-    return (X[c_idx, :], X[d_idx, :], y[c_idx], y[d_idx])
+    return X[c_idx, :], X[d_idx, :], y[c_idx], y[d_idx]
 
 
 # functions for SCCAF
@@ -475,7 +475,7 @@ def xmat2ymat(xmat, cmat, std=False):
     ymat[ymat < 0] = 0
     ymat = ymat / np.max(ymat)
     ymat = pd.DataFrame(ymat, columns=cmat.columns, index=cmat.index)
-    return (ymat)
+    return ymat
 
 
 def plot_link(ad, ymat, old_id, basis='tsne', ax=None, line_color='#ffa500', line_weight=10, plot_name=False,
@@ -492,7 +492,7 @@ def plot_link(ad, ymat, old_id, basis='tsne', ax=None, line_color='#ffa500', lin
                     verticalalignment='center',
                     horizontalalignment='center',
                     fontsize=legend_fontsize)
-	# 'for i in ymat.index:
+    # 'for i in ymat.index:
     # 'for j in ymat.columns:
     # 'val = ymat.loc[i][j]
     # 'if val >0:
@@ -509,7 +509,7 @@ def plot_link(ad, ymat, old_id, basis='tsne', ax=None, line_color='#ffa500', lin
             j = df.iloc[k]['j']
             ax.plot([centroids[i][0], centroids[j][0]], [centroids[i][1], centroids[j][1]],
                     linewidth=val * line_weight, color=line_color)
-    return (ax)
+    return ax
 
 
 def plot_center(ad, groupby, ax, basis='tsne', size=20):
@@ -521,7 +521,7 @@ def plot_center(ad, groupby, ax, basis='tsne', size=20):
         centroids[c] = np.median(Y_mask, axis=0)
     for c in centroids.keys():
         ax.plot(centroids[c][0], centroids[c][1], 'wo', markersize=size, alpha=0.5)
-    return (ax)
+    return ax
 
 
 def plot_link_scatter(ad, ymat, basis='pca', group='cell', title=''):
@@ -529,7 +529,7 @@ def plot_link_scatter(ad, ymat, basis='pca', group='cell', title=''):
     ax = plot_link(ad, ymat=ymat, old_id=group, basis=basis, ax=ax)
     sc.pl.scatter(ad, basis=basis, color=[group], color_map="RdYlBu_r", legend_loc='on data',
                   ax=ax, legend_fontsize=20, frameon=False, title=title)
-    return (ax)
+    return ax
 
 
 def get_topmarkers(clf, names, topn=10):
@@ -689,8 +689,8 @@ def eu_distance(X, gp1, gp2, cell):
     `float value`
     the average distance difference.
     """
-    d1 = euclidean_distances(X[(gp1) & (~cell), :], X[cell, :])
-    d2 = euclidean_distances(X[(gp2) & (~cell), :], X[cell, :])
+    d1 = euclidean_distances(X[gp1 & (~cell), :], X[cell, :])
+    d2 = euclidean_distances(X[gp2 & (~cell), :], X[cell, :])
     df1 = pd.DataFrame(d1[:, 0], columns=['distance'])
     df1['type'] = 'cell'
     df2 = pd.DataFrame(d2[:, 0], columns=['distance'])
@@ -699,7 +699,7 @@ def eu_distance(X, gp1, gp2, cell):
     m1 = d1.mean()
     m2 = d2.mean()
     print('%f - %f' % (m1, m2))
-    return (df)
+    return df
 
 
 def plot_distance_jitter(df):
@@ -719,7 +719,7 @@ def sc_pl_scatter(ad, basis='tsne', color='cell'):
                hue=color,  # Set color
                scatter_kws={"marker": "o",  # Set marker style
                             "s": 10}, palette=default_20)
-    return (df)
+    return df
 
 
 def sc_workflow(ad, prefix='L1', resolution=1.5, n_pcs=15, do_tsne=True):
@@ -738,7 +738,7 @@ def sc_workflow(ad, prefix='L1', resolution=1.5, n_pcs=15, do_tsne=True):
     sc.tl.umap(ad)
     sc.tl.louvain(ad, resolution=resolution)
     ad.obs["%s_res%.f" % (prefix, resolution)] = ad.obs["louvain"]
-    return (ad)
+    return ad
 
 
 def get_distance_matrix(X, clusters, labels=None, metric='euclidean'):
@@ -770,7 +770,7 @@ def get_distance_matrix(X, clusters, labels=None, metric='euclidean'):
     else:
         for cl in labels:
             centers.append(np.array(X[np.where(clusters == cl)[0], :].mean(0)))
-    return (pairwise_distances(np.array(centers), metric=metric))
+    return pairwise_distances(np.array(centers), metric=metric)
 
 
 def get_z_matrix(ad, id):
@@ -788,7 +788,7 @@ def get_z_matrix(ad, id):
                 for k in range(j + 1, len(yi)):
                     kk = int(yi[k])
                     z[jj, kk] = z[kk, jj] = 1
-    return (z)
+    return z
 
 
 def test_distance(ad):
@@ -858,10 +858,10 @@ def plot_heatmap_gray(X, title='', save=None):
     ax = fig.add_subplot(111)
     cax = ax.pcolormesh(X, cmap=cm.gray_r)
     ax.set_title(title)
-	# 'ax.set_xticks([])
-	# 'ax.set_yticks([])
+    # 'ax.set_xticks([])
+    # 'ax.set_yticks([])
     cbaxes = fig.add_axes([1, 0.125, 0.08, 0.76])
-	# 'cb = fig.colorbar(cax, cax = cbaxes, ticks=[])
+    # 'cb = fig.colorbar(cax, cax = cbaxes, ticks=[])
     cb = fig.colorbar(cax, cax=cbaxes)
     if save:
         plt.savefig(save)
@@ -1024,7 +1024,7 @@ def SCCAF_optimize(ad,
         new_id = '%s_Round%d' % (prefix, i + 1)
 
         labels = np.sort(ad.obs[old_id].unique().astype(int)).astype(str)
-		# 'labels = np.sort(ad.obs[old_id].unique()).astype(str)
+        # 'labels = np.sort(ad.obs[old_id].unique()).astype(str)
 
         # optimize
         y_prob, y_pred, y_test, clf, cvsm, acc = \
@@ -1056,7 +1056,7 @@ def SCCAF_optimize(ad,
             cmats.append(np.array(cmat))
         R1mat = np.minimum.reduce(xmats)
         R2mat = normalize_confmat2(np.minimum.reduce(cmats))
-		# 'cmat = np.minimum.reduce(cmats)
+        # 'cmat = np.minimum.reduce(cmats)
 
         m1 = np.max(R1mat)
         if np.isnan(m1):
@@ -1119,7 +1119,7 @@ def SCCAF_optimize(ad,
             ad.obs['%s_result' % prefix] = ad.obs[new_id]
             print("no clustering!")
             break
-    return (ad, m1, m2, np.min(accs), i)
+    return ad, m1, m2, np.min(accs), i
 
 
 def optimize_L2(ad,
@@ -1163,7 +1163,7 @@ def optimize_L2(ad,
 
         ad1.write("%s/%s.h5" % (savepath, cl))
         ad.obs.set_value(ad1.obs_names, 'Level2', ad1.obs['%s_result' % prefix2].tolist())
-    return (ad)
+    return ad
 
 
 # For plot
@@ -1172,8 +1172,8 @@ def merge_cluster(ad, old_id, new_id, groups):
     ad.obs[new_id] = ad.obs[new_id].astype('category')
     ad.obs[new_id].cat.categories = make_unique(groups.astype(str))
     ad.obs[new_id] = ad.obs[new_id].str.split('_').str[0]
-	# 'ad.obs[new_id] = ad.obs[new_id].astype(str)
-    return (ad)
+    # 'ad.obs[new_id] = ad.obs[new_id].astype(str)
+    return ad
 
 
 def plot_roc(y_prob, y_test, clf, plot=True, save=None, title='', colors=None, cvsm=None, acc=None, fontsize=16):
@@ -1203,7 +1203,7 @@ def plot_roc(y_prob, y_test, clf, plot=True, save=None, title='', colors=None, c
         plt.plot([0, 1], [0, 1], color='k', ls=':')  # random
         plt.xlabel('FPR')
         plt.ylabel('TPR')
-		# 'plt.title(r'%s $AUC_{min}: %.3f \ AUC_{max}: %.3f$'%(title, min_auc,max_auc))
+        # 'plt.title(r'%s $AUC_{min}: %.3f \ AUC_{max}: %.3f$'%(title, min_auc,max_auc))
         plt.title(title)
         plt.xticks([0, 1])
         plt.yticks([0, 1])
@@ -1215,7 +1215,7 @@ def plot_roc(y_prob, y_test, clf, plot=True, save=None, title='', colors=None, c
             plt.annotate("Test: %.3f" % acc, (0.5, 0.1), fontsize=fontsize)
         if save:
             plt.savefig(save)
-    return (aucs)
+    return aucs
 
 
 ########################################################################
@@ -1575,7 +1575,7 @@ def make_unique(dup_list):
         new = name + "_%s" % str(counter[name]) if counter[name] else name
         counter.update({name: 1})
         deduped.append(new)
-    return (deduped)
+    return deduped
 
 
 def regress_out(metadata, exprs, covariate_formula, design_formula='1', rcond=-1):
@@ -1593,7 +1593,7 @@ def regress_out(metadata, exprs, covariate_formula, design_formula='1', rcond=-1
     coefficients, res, rank, s = np.linalg.lstsq(design_batch, exprs.T, rcond=rcond)
 
     beta = coefficients[covariate_matrix.shape[1]:]
-    return (exprs - design_matrix.dot(beta).T)
+    return exprs - design_matrix.dot(beta).T
 
 
 def SubsetData(ad, sele, ad_raw):
@@ -1601,7 +1601,7 @@ def SubsetData(ad, sele, ad_raw):
     ad1 = ad_raw[ad_raw.obs_names.isin(ad.obs_names), :]
     for col in ad.obs.columns:
         ad1.obs[col] = ad.obs[col]
-    return (ad1)
+    return ad1
 
 
 def config_plotly():
@@ -1684,7 +1684,7 @@ def plotly4d(X, c, name='1', colorscale='Jet'):
 
 def find_high_resolution(ad, resolution=4, n=100):
     cut = resolution
-    while (cut > 0.5):
+    while cut > 0.5:
         print("clustering with resolution: %.1f" % cut)
         sc.tl.leiden(ad, resolution=cut)
         ad.obs['leiden_res%.1f' % cut] = ad.obs['leiden']
