@@ -20,7 +20,6 @@
 #
 
 import pandas as pd
-import numpy as np
 from collections import defaultdict
 import louvain
 import scipy
@@ -33,7 +32,6 @@ import scanpy
 # for color
 from scanpy.plotting.palettes import *
 
-import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
 
@@ -578,7 +576,7 @@ def plot_markers(top_markers, topn=10, save=None):
 	if save:
 		plt.savefig(save)
 	else:
-	plt.show()
+		plt.show()
 
 def plot_markers_scatter(ad, genes, groupby='louvain', save=None):
 	'''
@@ -765,7 +763,7 @@ def get_z_matrix(ad, id):
                     z[jj,kk] = z[kk,jj] = 1
     return(z)
 
-def test_distance():
+def test_distance(ad):
 	prefix='L1'
 	use_raw=True
 	plot=True
@@ -836,7 +834,7 @@ def plot_heatmap_gray(X, title='', save=None):
 	if save:
 		plt.savefig(save)
 	else:
-	plt.show()
+		plt.show()
 
 def SCCAF_optimize_all(min_acc=0.9, \
                        R1norm_cutoff = 0.5, \
@@ -1408,11 +1406,8 @@ color_long = ['#e6194b',
 
 # optimize the regress out function
 import numpy as np
-import scipy as sp
-import warnings
 import patsy
 from scipy.sparse import issparse
-from sklearn.utils import sparsefuncs
 from pandas.api.types import is_categorical_dtype
 from anndata import AnnData
 from scanpy import settings as sett
@@ -1627,82 +1622,6 @@ def plotly4d(X, c, name = '1', colorscale='Jet'):
 	fig = go.Figure(data=[trace], layout=layout)
 	offline.iplot(fig, filename=name)
 
-
-def run_slalom():
-	data = slalom.utils.load_txt(dataFile='../write/Hepatocytes_Fetal_noBCE1_exprs.csv',
-                             annoFiles=['../../Ref/h.all.v6.1.symbols.gmt','../../Ref/gene_lists_fscLVM.txt'],
-                             annoDBs=['MSigDB','custom'],
-                             niceTerms=[True,False])
-	I = data['I'] #if loaded from the hdf file change to I = data['IMSigDB']
-	#Y: log expresison values
-	Y = data['Y']
-	#terms: ther names of the terms
-	terms = data['terms']
-
-	#gene_ids: the ids of the genes in Y
-	gene_ids = data['genes']
-
-	#initialize FA instance, here using a Gaussian noise model and fitting 3 dense hidden factors
-	FA = slalom.initFA(Y, terms,I, gene_ids=gene_ids, noise='gauss', nHidden=0, minGenes=15)
-
-	#model training
-	FA.train()
-
-	#print diagnostics
-	FA.printDiagnostics()
-
-	slalom.utils.plotTerms(FA=FA)
-
-	#get factors; analogous getters are implemented for relevance and weights (see docs)
-	plt_terms = ['G2m checkpoint','Th2']
-	X = FA.getX(terms=plt_terms)
-
-	Ycorr = FA.regressOut(terms = ['Cell.cycle'], Yraw = adata.X)
-
-	adata1 = anndata.AnnData(Ycorr, obs=adata.obs)
-
-def run_bgpLVM():
-	model = GPy.models.BayesianGPLVM(adata.obsm['X_diffmap'][:,1:3], input_dim=1,\
-                                 X=np.array(adata.obs['dpt_pseudotime'])[:,None], init='random')
-	model.rbf.lengthscale.constrain_fixed(0.3, warning=False)
-	model.rbf.variance.constrain_fixed(25., warning=False)
-
-	model.optimize(messages=True)
-
-	Xnew = np.linspace(model.X.mean.min(), model.X.mean.max())[:, None]
-	Ynew = model.predict(Xnew)[0]
-
-	figsize(5,5)
-	plt.scatter(adata.obsm['X_diffmap'][:,1],adata.obsm['X_diffmap'][:,2], c=adata.obs['dpt_pseudotime'])
-	plt.colorbar();
-	plt.plot(*Ynew.T, lw=2, c='r');
-	plt.grid("off")
-
-	np.save('../write/Hepatocytes_Fetal_best_GPy.npy', model.param_array)
-
-	np.savetxt("../write/Hepatocytes_Fetal_best_GPy.csv", Ynew, delimiter=",")
-	return
-
-def fit_gplvm():
-	import os
-	for i,g in enumerate(adata.var_names):
-		print(g)
-		os.system("bsub python GPy_GPRegression.py write/Hepatocytes_Fetal_noBCEcc_reg.h5 %s -o log -e error"%g)
-
-	Ys = []
-	for i,g in enumerate(adata.var_names):
-		print(i)
-		df = pd.read_csv("GPy/%s.csv"%g,index_col=0, header=None)
-		Ys.append(df[1])
-	Y = np.array(Ys)
-	df100 = pd.DataFrame(Y,index = adata.var_names)
-	ds = pd.Series(df100.values.argmax(1),index=df100.index).sort_values(ascending=False)
-	from sklearn import preprocessing
-	X = preprocessing.scale(df100.loc[ds.index], 1)
-	sns.heatmap(X,yticklabels=False,
-				xticklabels=False, cmap=cm.RdBu_r)
-	plt.xlabel("Pseudotime")
-	plt.ylabel("Genes")
 
 def find_high_resolution(ad, resolution=4, n=100):
     cut = resolution

@@ -31,7 +31,7 @@ if your python environment is configured for python 3, then you should be able t
 
 The main method of SCCAF can be applied directly to an [anndata](https://anndata.readthedocs.io/en/stable/) (AnnData is the main data format used by [Scanpy](https://scanpy.readthedocs.io/en/stable/)) object in Python provided that it has been previously clustered and that the data is not too batchy (or that it has been batch corrected):
 
-```
+```python
 from SCCAF import SCCAF_optimize_all
 import scanpy.sc as sc
 
@@ -44,5 +44,6 @@ SCCAF_optimize_all(ad=tm, plot=False, min_acc=0.96)
 in the above run, all changes will be left on the `ad` anndata object and no plots
 will be generated. If you want to see the plots (blocking the progress until you close them)
 then remove the `plots=False`.
+
 
 Within the anndata object, assignments of cells to clusters will be left in `ad.obs['L1_Round<roundNumber>']`.
