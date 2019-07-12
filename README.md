@@ -27,23 +27,49 @@ if your python environment is configured for python 3, then you should be able t
 
 # Command line runs
 
-## Use with pre-clustered `anndata` object
+## Use with pre-clustered `anndata` object in the [SCANPY](https://scanpy.readthedocs.io/en/stable/) package
 
-The main method of SCCAF can be applied directly to an [anndata](https://anndata.readthedocs.io/en/stable/) (AnnData is the main data format used by [Scanpy](https://scanpy.readthedocs.io/en/stable/)) object in Python provided that it has been previously clustered and that the data is not too batchy (or that it has been batch corrected):
+The main method of SCCAF can be applied directly to an [anndata](https://anndata.readthedocs.io/en/stable/) (AnnData is the main data format used by [Scanpy](https://scanpy.readthedocs.io/en/stable/)) object in Python. 
+
+* Before applying SCCAF, please make sure the doublets have been excluded and the batch effect has been effectively regressed. *
+
+## Assessment of the quality of a clustering
+Given a clustering, we would like to understand the quality (discrimination between clusters) with SCCAF:
+
+```
+y_prob, y_pred, y_test, clf, cvsm, acc = SCCAF_assessment(mat, clstr, n=100)
+```
+`mat` is the cell x feature expression matrix, i.e., adata.X, `clstr` is the clustering assignment. 
+And the returned accuracy is in the `acc`. 
+
+The ROC curve can be plotted:
+```
+plot_roc(y_prob, y_test, clf, cvsm=cvsm, acc=acc)
+```
+
+Higher accuracy indicate better discrimination. And the ROC curve shows the problematic clusters. 
+
+## Optimize an over-clustering
+Given an over-clustered result, SCCAF optimize the clustering by merging the cell clusters that cannot be discriminated by machine learning:
 
 ```python
 from SCCAF import SCCAF_optimize_all
-import scanpy.sc as sc
+import scanpy as sc
 
-ad = sc.read("path-to-clusterised-and-umapped-anndata-file")
-# Set the initial starting point, assuming that cells were clusterised through louvain.
-ad.obs['L1_Round0'] = tm.obs['louvain']
-SCCAF_optimize_all(ad=tm, plot=False, min_acc=0.96)
+# The batch effect MUST be regressed before applying SCCAF
+adata = sc.read("path-to-clusterised-and-umapped-anndata-file")
+
+# An initial over-clustering needs to be assigned in consistent with the prefix for the optimization.
+# i.e., the optimization prefix is `L2`, the starting point of the optimization of `%s_Round0`%prefix, which is `L2_Round0`.
+
+sc.tl.louvain(adata, resolution=1.5, key_added='L2_Round0')
+# i.e., we aim to achieve an accuracy >90% for the whole dataset, optimize based on the PCA space:
+SCCAF_optimize_all(ad=adata, plot=False, min_acc=0.9, prefix = 'L2', use='pca')
 ```
 
-in the above run, all changes will be left on the `ad` anndata object and no plots
+in the above run, all changes will be left on the `adata` anndata object and no plots
 will be generated. If you want to see the plots (blocking the progress until you close them)
 then remove the `plots=False`.
 
 
-Within the anndata object, assignments of cells to clusters will be left in `ad.obs['L1_Round<roundNumber>']`.
+Within the anndata object, assignments of cells to clusters will be left in `adata.obs['<prefix>_Round<roundNumber>']`.
