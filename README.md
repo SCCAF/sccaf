@@ -50,7 +50,10 @@ returned accuracy is in the `acc` variable.
 The ROC curve can be plotted:
 
 ```python
+import matplotlib.pyplot as plt
+
 plot_roc(y_prob, y_test, clf, cvsm=cvsm, acc=acc)
+plt.show()
 ```
 
 Higher accuracy indicate better discrimination. And the ROC curve shows the problematic clusters. 
