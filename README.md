@@ -13,7 +13,7 @@ You can install SCCAF with pip:
 pip install sccaf
 ```
 
-Clone this repo and go into its directory, then execute:
+Alternatively, for the latest version, clone this repo and go into its directory, then execute `pip3 install .`:
 
 ```
 git clone https://github.com/SCCAF/sccaf
