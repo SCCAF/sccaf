@@ -1623,30 +1623,6 @@ def plotly4d(X, c, name = '1', colorscale='Jet'):
 	offline.iplot(fig, filename=name)
 
 
-
-def run_bgpLVM():
-	model = GPy.models.BayesianGPLVM(adata.obsm['X_diffmap'][:,1:3], input_dim=1,\
-                                 X=np.array(adata.obs['dpt_pseudotime'])[:,None], init='random')
-	model.rbf.lengthscale.constrain_fixed(0.3, warning=False)
-	model.rbf.variance.constrain_fixed(25., warning=False)
-
-	model.optimize(messages=True)
-
-	Xnew = np.linspace(model.X.mean.min(), model.X.mean.max())[:, None]
-	Ynew = model.predict(Xnew)[0]
-
-	figsize(5,5)
-	plt.scatter(adata.obsm['X_diffmap'][:,1],adata.obsm['X_diffmap'][:,2], c=adata.obs['dpt_pseudotime'])
-	plt.colorbar();
-	plt.plot(*Ynew.T, lw=2, c='r');
-	plt.grid("off")
-
-	np.save('../write/Hepatocytes_Fetal_best_GPy.npy', model.param_array)
-
-	np.savetxt("../write/Hepatocytes_Fetal_best_GPy.csv", Ynew, delimiter=",")
-	return
-
-
 def find_high_resolution(ad, resolution=4, n=100):
     cut = resolution
     while(cut>0.5):
