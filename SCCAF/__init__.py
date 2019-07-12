@@ -49,7 +49,7 @@ from sklearn.svm import SVC
 
 
 def run_BayesianGaussianMixture(Y, K):
-    '''
+    """
     For K-means clustering
 
     Input
@@ -60,10 +60,11 @@ def run_BayesianGaussianMixture(Y, K):
     return
     -----
     clusters assigned to each cell.
-    '''
+    """
     gmm = BayesianGaussianMixture(K, max_iter=1000)
     gmm.fit(Y)
     return(gmm.predict(Y))
+
 
 def bhattacharyya_distance(repr1, repr2):
     """Calculates Bhattacharyya distance (https://en.wikipedia.org/wiki/Bhattacharyya_distance)."""
@@ -97,7 +98,7 @@ def bhattacharyya_matrix(prob, flags=None):
 
 def binary_accuracy(X, y, clf):
     y_pred = clf.predict(X)
-    return (y == y_pred)
+    return y == y_pred
 
 
 def run1(ad, key='random', basis='pca', n=0):
@@ -145,7 +146,7 @@ def run1(ad, key='random', basis='pca', n=0):
 
 
 def normalize_confmat1(cmat, mod='1'):
-    '''
+    """
     Normalize the confusion matrix based on the total number of cells in each class
     x(i,j) = max(cmat(i,j)/diagnol(i),cmat(j,i)/diagnol(j))
     confusion rate between i and j is defined by the maximum ratio i is confused as j or j is confused as i.
@@ -156,7 +157,7 @@ def normalize_confmat1(cmat, mod='1'):
     return
     -----
     the normalized confusion matrix
-    '''
+    """
     dmat = cmat.values
     smat = np.diag(dmat)
     dim = cmat.shape[0]
@@ -171,7 +172,7 @@ def normalize_confmat1(cmat, mod='1'):
 
 
 def normalize_confmat2(cmat):
-    '''
+    """
     Normalize the confusion matrix based on the total number of cells.
     x(i,j) = max(cmat(i,j)+cmat(j,i)/N)
     N is total number of cells analyzed.
@@ -184,7 +185,7 @@ def normalize_confmat2(cmat):
     return
     -----
     the normalized confusion matrix
-    '''
+    """
     emat = np.copy(cmat)
     s = np.sum(cmat)
     emat = emat + emat.T
@@ -195,7 +196,7 @@ def normalize_confmat2(cmat):
 def cluster_adjmat(xmat,
                    resolution=1,
                    cutoff=0.1):
-    '''
+    """
     Cluster the groups based on the adjacent matrix.
     Use the cutoff to discretize the matrix used to construct the adjacent graph.
     Then cluster the graph using the louvain clustering with a resolution value.
@@ -213,7 +214,7 @@ def cluster_adjmat(xmat,
     return
     -----
     new group names.
-    '''
+    """
     g = scanpy.utils.get_igraph_from_adjacency((xmat > cutoff).astype(int), directed=False)
     print(g)
     part = louvain.find_partition(g, louvain.RBConfigurationVertexPartition,
@@ -223,7 +224,7 @@ def cluster_adjmat(xmat,
 
 
 def msample(x, n, frac):
-    '''
+    """
     sample the matrix by number or by fraction.
     if the fraction is larger than the sample number, use number for sampling. Otherwise, use fraction.
 
@@ -236,7 +237,7 @@ def msample(x, n, frac):
     return
     -----
     sampled selection.
-    '''
+    """
     if len(x) <= np.floor(n / frac):
         if len(x) < 10: frac = 0.9
         return x.sample(frac=frac)
@@ -245,7 +246,7 @@ def msample(x, n, frac):
 
 
 def train_test_split_per_type(X, y, n=100, frac=0.8):
-    '''
+    """
     This function is identical to train_test_split, but can split the data either based on number of cells or by fraction.
 
     Input
@@ -263,7 +264,7 @@ def train_test_split_per_type(X, y, n=100, frac=0.8):
     return
     -----
     X_train, X_test, y_train, y_test
-    '''
+    """
     df = pd.DataFrame(y)
     df.index = np.arange(len(y))
     df.columns = ['class']
@@ -274,11 +275,11 @@ def train_test_split_per_type(X, y, n=100, frac=0.8):
 
 # functions for SCCAF
 def SCCAF_assessment(*args, **kwargs):
-    '''
+    """
     Assessment of clustering reliability using self-projection.
     It is the same as the self_projection function.
-    '''
-    return (self_projection(*args, **kwargs))
+    """
+    return self_projection(*args, **kwargs)
 
 
 # need to check number of cells in each cluster of the training set.
@@ -292,7 +293,7 @@ def self_projection(X, cell_types, \
                     cv=5, \
                     whole=False):
     # n = 100 should be good.
-    '''
+    """
     This is the core function for running self-projection.
 
     Input
@@ -332,7 +333,7 @@ def self_projection(X, cell_types, \
     y_test: `list of string/int`
         real clustering of the test set
     clf: the classifier model.
-    '''
+    """
     if n > 0:
         X_train, X_test, y_train, y_test = \
             train_test_split_per_type(X, cell_types, n=n, frac=(1 - fraction))
@@ -380,7 +381,7 @@ def self_projection(X, cell_types, \
 
 
 def make_unique(dup_list):
-    '''
+    """
     Make a name list unique by adding suffix "_%d". This function is identical to the make.unique function in R.
 
     Input
@@ -390,19 +391,20 @@ def make_unique(dup_list):
     return
     -----
     a unique list with the same length as the input.
-    '''
+    """
     from collections import Counter
+
     counter = Counter()
     deduped = []
     for name in dup_list:
         new = str(name) + "_%s" % str(counter[name]) if counter[name] else name
         counter.update({name: 1})
         deduped.append(new)
-    return (deduped)
+    return deduped
 
 
 def confusion_matrix(y_test, y_pred, clf, labels=None):
-    '''
+    """
     Get confusion matrix based on the test set.
 
     Input
@@ -412,18 +414,18 @@ def confusion_matrix(y_test, y_pred, clf, labels=None):
     return
     -----
     the confusion matrix
-    '''
+    """
     if labels is None: labels = clf.classes_
     df = pd.DataFrame.from_records(metrics.confusion_matrix(y_test, y_pred, labels=labels))
     df.index = labels
     df.columns = labels
     df.index.name = 'Real'
     df.columns.name = 'Predicted'
-    return (df)
+    return df
 
 
 def per_cluster_accuracy(mtx, ad=None, clstr_name='louvain'):
-    '''
+    """
     Measure the accuracy of each cluster and put into a metadata slot.
     So the reliability of each cluster can be visualized.
 
@@ -438,7 +440,7 @@ def per_cluster_accuracy(mtx, ad=None, clstr_name='louvain'):
 
     return
     -----
-    '''
+    """
     ds = None
     if not ad is None:
         ds = (np.diag(mtx.values) / mtx.sum(0)).fillna(0)
@@ -447,7 +449,7 @@ def per_cluster_accuracy(mtx, ad=None, clstr_name='louvain'):
         ad.obs[rel_name].cat.categories = make_unique(ds)
         ad.obs[rel_name] = ad.obs[rel_name].astype(str).str.split("_").str[0]
         ad.obs[rel_name] = ad.obs[rel_name].astype(float)
-    return (ds)
+    return ds
 
 
 def per_cell_accuracy(X, cell_types, clf):
@@ -458,7 +460,7 @@ def per_cell_accuracy(X, cell_types, clf):
     for cell in df.index:
         x = np.array(df.loc[cell][cell].values)
         dy = np.concatenate((dy, x))
-    return (dy / np.max(df.values, 0))
+    return dy/np.max(df.values, 0)
 
 
 def xmat2ymat(xmat, cmat, std=False):
@@ -531,7 +533,7 @@ def plot_link_scatter(ad, ymat, basis='pca', group='cell', title=''):
 
 
 def get_topmarkers(clf, names, topn=10):
-    '''
+    """
     Get the top weighted features from the logistic regressioin model.
 
     Input
@@ -545,10 +547,10 @@ def get_topmarkers(clf, names, topn=10):
     return
     -----
     list of markers for each of the cluster.
-    '''
+    """
     marker_genes = pd.DataFrame({
-        'cell_type': clf.classes_[clf.coef_.argmax(0)], \
-        'gene': names, \
+        'cell_type': clf.classes_[clf.coef_.argmax(0)],
+        'gene': names,
         'weight': clf.coef_.max(0)
     })
 
@@ -559,11 +561,11 @@ def get_topmarkers(clf, names, topn=10):
             .groupby('cell_type') \
             .head(topn) \
             .sort_values(['cell_type', 'weight'], ascending=[True, False])
-    return (top_markers)
+    return top_markers
 
 
 def plot_markers(top_markers, topn=10, save=None):
-    '''
+    """
     Plot the top marker genes as a figure.
 
     Input
@@ -578,7 +580,7 @@ def plot_markers(top_markers, topn=10, save=None):
     return
     -----
     None
-    '''
+    """
     n_types = len(top_markers.cell_type.unique())
     nrow = int(np.floor(np.sqrt(n_types)))
     ncol = int(np.ceil(n_types / nrow))
@@ -598,9 +600,9 @@ def plot_markers(top_markers, topn=10, save=None):
 
 
 def plot_markers_scatter(ad, genes, groupby='louvain', save=None):
-    '''
+    """
     Not in use.
-    '''
+    """
     ad.obs['idx'] = range(ad.shape[0])
     ad.raw.var['idx'] = range(ad.raw.X.shape[1])
     c_idx = ad.obs.sort_values(by=groupby).idx
@@ -651,9 +653,9 @@ def plot_markers_scatter(ad, genes, groupby='louvain', save=None):
 # 'c_idx = ad.obs.sort_values(by='cell').idx
 # 'g_idx = ad.var.loc[genes].idx
 def DoHeatmap(X, c_idx, g_idx, sizes=None, cmap='gray_r'):
-    '''
+    """
     Not in use.
-    '''
+    """
     X1 = X[c_idx, :]
     X1 = X1[:, g_idx]
 
@@ -668,7 +670,7 @@ def DoHeatmap(X, c_idx, g_idx, sizes=None, cmap='gray_r'):
 
 
 def eu_distance(X, gp1, gp2, cell):
-    '''
+    """
     Measure the euclidean distance between two groups of cells and the third group.
 
     Input
@@ -686,7 +688,7 @@ def eu_distance(X, gp1, gp2, cell):
     -----
     `float value`
     the average distance difference.
-    '''
+    """
     d1 = euclidean_distances(X[(gp1) & (~cell), :], X[cell, :])
     d2 = euclidean_distances(X[(gp2) & (~cell), :], X[cell, :])
     df1 = pd.DataFrame(d1[:, 0], columns=['distance'])
@@ -740,7 +742,7 @@ def sc_workflow(ad, prefix='L1', resolution=1.5, n_pcs=15, do_tsne=True):
 
 
 def get_distance_matrix(X, clusters, labels=None, metric='euclidean'):
-    '''
+    """
     Get the mean distance matrix between all clusters.
 
     Input
@@ -758,7 +760,7 @@ def get_distance_matrix(X, clusters, labels=None, metric='euclidean'):
     -----
     `np.array`
         the all-cluster to all-cluster distance matrix.
-    '''
+    """
     if labels is None:
         labels = np.unique(clusters)
     centers = []
@@ -872,7 +874,7 @@ def SCCAF_optimize_all(min_acc=0.9, \
                        R2norm_cutoff=0.05, \
                        R1norm_step=0.01, \
                        R2norm_step=0.001, *args, **kwargs):
-    '''
+    """
     ad: `AnnData`
         The AnnData object of the expression profile.
     min_acc: `float` optional (default: 0.9)
@@ -893,7 +895,7 @@ def SCCAF_optimize_all(min_acc=0.9, \
         determined by the minimum R1norm value in the previous round minus the R1norm_step value.
     R2norm_step: `float` optional (default: 0.001)
         The reduce step for minimum R2norm value.
-    '''
+    """
     acc = 0
     start_iter = 0
     while acc < min_acc:
@@ -936,7 +938,7 @@ def SCCAF_optimize(ad,
                    R2norm_cutoff=1,
                    dist_cutoff=8,
                    classifier="LR", min_acc=1):
-    '''
+    """
     This is a self-projection confusion matrix directed cluster optimization function.
 
     Input
@@ -1004,7 +1006,7 @@ def SCCAF_optimize(ad,
     -----
     The modified anndata object, with a slot "%s_result"%prefix
         assigned as the clustering optimization results.
-    '''
+    """
 
     X = None
     if use == 'raw':
@@ -1175,9 +1177,9 @@ def merge_cluster(ad, old_id, new_id, groups):
 
 
 def plot_roc(y_prob, y_test, clf, plot=True, save=None, title='', colors=None, cvsm=None, acc=None, fontsize=16):
-    '''
+    """
     y_prob, y_test, clf, plot=True, save=False, title ='', colors=None, cvsm=None, acc=None, fontsize=16):
-    '''
+    """
     aucs = []
     if plot:
         if colors is None:
@@ -1250,7 +1252,7 @@ def check_data_matches_labels(labels, data, side):
 def sankey(left, right, leftWeight=None, rightWeight=None, colorDict=None,
            leftLabels=None, rightLabels=None, aspect=4, rightColor=False,
            fontsize=14, figure_name=None, closePlot=False):
-    '''
+    """
     Make Sankey Diagram showing flow from left-->right
 
     Inputs:
@@ -1271,7 +1273,7 @@ def sankey(left, right, leftWeight=None, rightWeight=None, colorDict=None,
                     according to its left label
     Ouput:
         None
-    '''
+    """
     if leftWeight is None:
         leftWeight = []
     if rightWeight is None:
@@ -1577,8 +1579,8 @@ def make_unique(dup_list):
 
 
 def regress_out(metadata, exprs, covariate_formula, design_formula='1', rcond=-1):
-    ''' Implementation of limma's removeBatchEffect function
-    '''
+    """ Implementation of limma's removeBatchEffect function
+    """
     # Ensure intercept is not part of covariates
     # covariate_formula is the variance to be kept, design_formula is the variance to regress out
 
