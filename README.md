@@ -1,8 +1,10 @@
-This package implements ....
+# SCCAF: Single Cell Clustering Assessment Framework
+
+Single Cell Clustering Assessment Framework (SCCAF) is a novel method for automated identification of putative cell types from single cell RNA-seq (scRNA-seq) data. By iteratively applying clustering and a machine learning approach to gene expression profiles of a given set of cells, SCCAF simultaneously identifies distinct cell groups and a weighted list of feature genes for each group. The feature genes, which are overexpressed in the particular cell group, jointly discriminate the given cell group from other cells. Each such group of cells corresponds to a putative cell type or state, characterised by the feature genes as markers.
 
 # Requirements
 
-This package requires Python 3 and pip3 for installation.
+This package requires Python 3 and pip3 for installation, which will take care of dependencies.
 
 # Installation
 
@@ -25,9 +27,9 @@ if your python environment is configured for python 3, then you should be able t
 
 # Command line runs
 
-## Use with pre-clusterised `anndata` object
+## Use with pre-clustered `anndata` object
 
-The main method of SCCAF can be applied directly to an anndata object in Python provided that it has been previously clustered and that the data is not too batchy (or that it has been batch corrected):
+The main method of SCCAF can be applied directly to an [anndata](https://anndata.readthedocs.io/en/stable/) (AnnData is the main data format used by [Scanpy](https://scanpy.readthedocs.io/en/stable/)) object in Python provided that it has been previously clustered and that the data is not too batchy (or that it has been batch corrected):
 
 ```
 from SCCAF import SCCAF_optimize_all
