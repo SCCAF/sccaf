@@ -63,7 +63,7 @@ def run_BayesianGaussianMixture(Y, K):
     """
     gmm = BayesianGaussianMixture(K, max_iter=1000)
     gmm.fit(Y)
-    return(gmm.predict(Y))
+    return gmm.predict(Y)
 
 
 def bhattacharyya_distance(repr1, repr2):
@@ -270,7 +270,7 @@ def train_test_split_per_type(X, y, n=100, frac=0.8):
     df.columns = ['class']
     c_idx = df.groupby('class').apply(lambda x: msample(x, n=n, frac=frac)).index.get_level_values(None)
     d_idx = ~np.isin(np.arange(len(y)), c_idx)
-    return ((X[c_idx, :], X[d_idx, :], y[c_idx], y[d_idx]))
+    return (X[c_idx, :], X[d_idx, :], y[c_idx], y[d_idx])
 
 
 # functions for SCCAF
@@ -283,14 +283,14 @@ def SCCAF_assessment(*args, **kwargs):
 
 
 # need to check number of cells in each cluster of the training set.
-def self_projection(X, cell_types, \
-                    classifier="LR", \
-                    penalty='l1', \
-                    sparsity=0.5, \
-                    fraction=0.5, \
-                    random_state=1, \
-                    n=0, \
-                    cv=5, \
+def self_projection(X, cell_types,
+                    classifier="LR",
+                    penalty='l1',
+                    sparsity=0.5,
+                    fraction=0.5,
+                    random_state=1,
+                    n=0,
+                    cv=5,
                     whole=False):
     # n = 100 should be good.
     """
@@ -339,7 +339,7 @@ def self_projection(X, cell_types, \
             train_test_split_per_type(X, cell_types, n=n, frac=(1 - fraction))
     else:
         X_train, X_test, y_train, y_test = \
-            train_test_split(X, cell_types, \
+            train_test_split(X, cell_types,
                              stratify=cell_types, test_size=fraction)  # fraction means test size
 
     if classifier == 'LR':
@@ -507,7 +507,7 @@ def plot_link(ad, ymat, old_id, basis='tsne', ax=None, line_color='#ffa500', lin
         if df.iloc[k]['val'] > 0:
             i = df.iloc[k]['i']
             j = df.iloc[k]['j']
-            ax.plot([centroids[i][0], centroids[j][0]], [centroids[i][1], centroids[j][1]], \
+            ax.plot([centroids[i][0], centroids[j][0]], [centroids[i][1], centroids[j][1]],
                     linewidth=val * line_weight, color=line_color)
     return (ax)
 
@@ -527,7 +527,7 @@ def plot_center(ad, groupby, ax, basis='tsne', size=20):
 def plot_link_scatter(ad, ymat, basis='pca', group='cell', title=''):
     fig, ax = plt.subplots()
     ax = plot_link(ad, ymat=ymat, old_id=group, basis=basis, ax=ax)
-    sc.pl.scatter(ad, basis=basis, color=[group], color_map="RdYlBu_r", legend_loc='on data', \
+    sc.pl.scatter(ad, basis=basis, color=[group], color_map="RdYlBu_r", legend_loc='on data',
                   ax=ax, legend_fontsize=20, frameon=False, title=title)
     return (ax)
 
@@ -869,10 +869,10 @@ def plot_heatmap_gray(X, title='', save=None):
         plt.show()
 
 
-def SCCAF_optimize_all(min_acc=0.9, \
-                       R1norm_cutoff=0.5, \
-                       R2norm_cutoff=0.05, \
-                       R1norm_step=0.01, \
+def SCCAF_optimize_all(min_acc=0.9,
+                       R1norm_cutoff=0.5,
+                       R2norm_cutoff=0.05,
+                       R1norm_step=0.01,
                        R2norm_step=0.001, *args, **kwargs):
     """
     ad: `AnnData`
@@ -904,9 +904,9 @@ def SCCAF_optimize_all(min_acc=0.9, \
         print("R2norm_cutoff: %f" % R2norm_cutoff)
         print("Accuracy: %f" % acc)
         print("======================")
-        ad, m1, m2, acc, start_iter = SCCAF_optimize(R1norm_cutoff=R1norm_cutoff, \
-                                                     R2norm_cutoff=R2norm_cutoff, \
-                                                     start_iter=start_iter, \
+        ad, m1, m2, acc, start_iter = SCCAF_optimize(R1norm_cutoff=R1norm_cutoff,
+                                                     R2norm_cutoff=R2norm_cutoff,
+                                                     start_iter=start_iter,
                                                      min_acc=min_acc, *args, **kwargs)
         print("m1: %f" % m1)
         print("m2: %f" % m2)
@@ -1028,7 +1028,7 @@ def SCCAF_optimize(ad,
 
         # optimize
         y_prob, y_pred, y_test, clf, cvsm, acc = \
-            self_projection(X, ad.obs[old_id], sparsity=sparsity, n=n, \
+            self_projection(X, ad.obs[old_id], sparsity=sparsity, n=n,
                             fraction=fraction, classifier=classifier)
         accs = [acc]
         if plot:
@@ -1157,7 +1157,7 @@ def optimize_L2(ad,
 
         ad1.obs["%s_Round0" % prefix2] = ad1.obs["louvain"]
 
-        SCCAF_optimize(ad1, use=use, prefix=prefix2, c_iter=c_iter, plot=plot, \
+        SCCAF_optimize(ad1, use=use, prefix=prefix2, c_iter=c_iter, plot=plot,
                        classifier=classifier, R1norm_cutoff=R1norm_cutoff, dist_cutoff=dist_cutoff,
                        R2norm_cutoff=R2norm_cutoff)
 
