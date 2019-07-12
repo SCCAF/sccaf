@@ -28,13 +28,16 @@ import os
 import seaborn as sns
 
 import scanpy.api as sc
-import scanpy #for clustering
-from scanpy.plotting.palettes import * #for color
+# for clustering
+import scanpy
+# for color
+from scanpy.plotting.palettes import *
 
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
+from matplotlib import rcParams
 
-from sklearn.externals import joblib # for reading/saving clf model.
+# for reading/saving clf model
 from sklearn.mixture import BayesianGaussianMixture
 from sklearn import metrics
 from sklearn.metrics.pairwise import euclidean_distances, pairwise_distances
@@ -572,8 +575,9 @@ def plot_markers(top_markers, topn=10, save=None):
 		plt.axis('off')
 		plt.ylim(topn * 0.2, -0.2)
 	plt.tight_layout()
-	if not save is None:
+	if save:
 		plt.savefig(save)
+	else:
 	plt.show()
 
 def plot_markers_scatter(ad, genes, groupby='louvain', save=None):
@@ -611,14 +615,14 @@ def plot_markers_scatter(ad, genes, groupby='louvain', save=None):
 
 	dfx1.columns = [0,1,2,3]
 
-	matplotlib.rcParams.update({'font.size': 12})
+	rcParams.update({'font.size': 12})
 	plt.scatter(dfx1[1],dfx1[0],c=dfx1[2],s=dfx1[3]*150.,marker='o')
 	plt.xticks(range(len(genes)),genes,rotation=90)
 	plt.xlabel("Genes",fontsize=22)
 	plt.ylabel("Clusters",fontsize=22)
 	plt.xlim([-1,len(genes)])
 
-	if not save is None:
+	if save:
 		plt.savefig(save)
 	else:
 		plt.show()
@@ -817,7 +821,8 @@ def test_distance():
 		plt.ylabel('confusion')
 		plt.show()
 
-def plot_heatmap_gray(X, title=''):
+
+def plot_heatmap_gray(X, title='', save=None):
 	plt.clf()
 	fig = plt.figure()
 	ax = fig.add_subplot(111)
@@ -828,6 +833,9 @@ def plot_heatmap_gray(X, title=''):
 	cbaxes = fig.add_axes([1, 0.125, 0.08, 0.76])
 	#'cb = fig.colorbar(cax, cax = cbaxes, ticks=[])
 	cb = fig.colorbar(cax, cax = cbaxes)
+	if save:
+		plt.savefig(save)
+	else:
 	plt.show()
 
 def SCCAF_optimize_all(min_acc=0.9, \
@@ -1129,7 +1137,8 @@ def merge_cluster(ad, old_id, new_id, groups):
     #'ad.obs[new_id] = ad.obs[new_id].astype(str)
     return(ad)
 
-def plot_roc(y_prob, y_test, clf, plot=True, save=False, title ='', colors=None, cvsm=None, acc=None, fontsize=16):
+
+def plot_roc(y_prob, y_test, clf, plot=True, save=None, title ='', colors=None, cvsm=None, acc=None, fontsize=16):
 	'''
 	y_prob, y_test, clf, plot=True, save=False, title ='', colors=None, cvsm=None, acc=None, fontsize=16):
 	'''
@@ -1159,11 +1168,11 @@ def plot_roc(y_prob, y_test, clf, plot=True, save=False, title ='', colors=None,
 		plt.yticks([0,1])
 		plt.annotate(r'$AUC_{min}: %.3f$'%min_auc, (0.5,0.4), fontsize=fontsize)
 		plt.annotate(r'$AUC_{max}: %.3f$'%max_auc, (0.5,0.3), fontsize=fontsize)
-		if not cvsm is None:
+		if cvsm:
 			plt.annotate("CV: %.3f"%cvsm, (0.5,0.2), fontsize=fontsize)
-		if not acc is None:
+		if acc:
 			plt.annotate("Test: %.3f"%acc, (0.5,0.1), fontsize=fontsize)
-		if not save is False:
+		if save:
 			plt.savefig(save)
 	return(aucs)
 
@@ -1543,14 +1552,18 @@ def SubsetData(ad, sele, ad_raw):
 		ad1.obs[col] = ad.obs[col]
 	return(ad1)
 
-import plotly
-plotly.tools.set_config_file(world_readable=False,
-							 sharing='private')
-plotly.offline.init_notebook_mode(connected=True)
-import plotly.plotly as py
-import plotly.graph_objs as go
+
+def config_plotly():
+	from plotly import tools, offline
+	tools.set_config_file(world_readable=False, sharing='private')
+	offline.init_notebook_mode(connected=True)
+
 from scanpy.plotting.palettes import *
 def plotly3d(X, cell_types, unique_types, colors = default_20, name = '1'):
+	import plotly.graph_objs as go
+	from plotly import offline
+	config_plotly()
+
 	if len(unique_types) > 20: colors = default_26
 	if len(unique_types) > 26: colors = default_64
 	x,y,z = X[:,1],X[:,2],X[:,3]
@@ -1583,9 +1596,13 @@ def plotly3d(X, cell_types, unique_types, colors = default_20, name = '1'):
 		)
 	)
 	fig = go.Figure(data=data, layout=layout)
-	plotly.offline.iplot(fig, filename=name)
+	offline.iplot(fig, filename=name)
+
 
 def plotly4d(X, c, name = '1', colorscale='Jet'):
+	import plotly.graph_objs as go
+	from plotly import offline
+
 	x,y,z = X[:,1],X[:,2],X[:,3]
 	trace = go.Scatter3d(
 		x=x,
@@ -1608,7 +1625,8 @@ def plotly4d(X, c, name = '1', colorscale='Jet'):
 		)
 	)
 	fig = go.Figure(data=[trace], layout=layout)
-	plotly.offline.iplot(fig, filename=name)
+	offline.iplot(fig, filename=name)
+
 
 def run_slalom():
 	data = slalom.utils.load_txt(dataFile='../write/Hepatocytes_Fetal_noBCE1_exprs.csv',
