@@ -1623,38 +1623,6 @@ def plotly4d(X, c, name = '1', colorscale='Jet'):
 	offline.iplot(fig, filename=name)
 
 
-def run_slalom():
-	data = slalom.utils.load_txt(dataFile='../write/Hepatocytes_Fetal_noBCE1_exprs.csv',
-                             annoFiles=['../../Ref/h.all.v6.1.symbols.gmt','../../Ref/gene_lists_fscLVM.txt'],
-                             annoDBs=['MSigDB','custom'],
-                             niceTerms=[True,False])
-	I = data['I'] #if loaded from the hdf file change to I = data['IMSigDB']
-	#Y: log expresison values
-	Y = data['Y']
-	#terms: ther names of the terms
-	terms = data['terms']
-
-	#gene_ids: the ids of the genes in Y
-	gene_ids = data['genes']
-
-	#initialize FA instance, here using a Gaussian noise model and fitting 3 dense hidden factors
-	FA = slalom.initFA(Y, terms,I, gene_ids=gene_ids, noise='gauss', nHidden=0, minGenes=15)
-
-	#model training
-	FA.train()
-
-	#print diagnostics
-	FA.printDiagnostics()
-
-	slalom.utils.plotTerms(FA=FA)
-
-	#get factors; analogous getters are implemented for relevance and weights (see docs)
-	plt_terms = ['G2m checkpoint','Th2']
-	X = FA.getX(terms=plt_terms)
-
-	Ycorr = FA.regressOut(terms = ['Cell.cycle'], Yraw = adata.X)
-
-	adata1 = anndata.AnnData(Ycorr, obs=adata.obs)
 
 def run_bgpLVM():
 	model = GPy.models.BayesianGPLVM(adata.obsm['X_diffmap'][:,1:3], input_dim=1,\
