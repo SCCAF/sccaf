@@ -1678,7 +1678,7 @@ def run_bgpLVM():
 	np.savetxt("../write/Hepatocytes_Fetal_best_GPy.csv", Ynew, delimiter=",")
 	return
 
-def fit_gplvm():
+def fit_gplvm(adata):
 	import os
 	for i,g in enumerate(adata.var_names):
 		print(g)
