@@ -41,6 +41,7 @@ Given a clustering stored in an anndata object `adata` under the key `louvain`, 
 from SCCAF import SCCAF_assessment, plot_roc
 import scanpy as sc
 
+adata = sc.read("path-to-clusterised-and-umapped-anndata-file")
 y_prob, y_pred, y_test, clf, cvsm, acc = SCCAF_assessment(adata.X, adata.obs['louvain'], n=100)
 ```
 
