@@ -37,6 +37,9 @@ The main method of SCCAF can be applied directly to an [anndata](https://anndata
 Given a clustering, we would like to understand the quality (discrimination between clusters) with SCCAF:
 
 ```
+from SCCAF import *
+import scanpy as sc
+
 y_prob, y_pred, y_test, clf, cvsm, acc = SCCAF_assessment(mat, clstr, n=100)
 ```
 `mat` is the cell x feature expression matrix, i.e., adata.X, `clstr` is the clustering assignment. 
@@ -53,8 +56,6 @@ Higher accuracy indicate better discrimination. And the ROC curve shows the prob
 Given an over-clustered result, SCCAF optimize the clustering by merging the cell clusters that cannot be discriminated by machine learning:
 
 ```python
-from SCCAF import SCCAF_optimize_all
-import scanpy as sc
 
 # The batch effect MUST be regressed before applying SCCAF
 adata = sc.read("path-to-clusterised-and-umapped-anndata-file")
