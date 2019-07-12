@@ -34,17 +34,17 @@ The main method of SCCAF can be applied directly to an [anndata](https://anndata
 * Before applying SCCAF, please make sure the doublets have been excluded and the batch effect has been effectively regressed. *
 
 ## Assessment of the quality of a clustering
-Given a clustering, we would like to understand the quality (discrimination between clusters) with SCCAF:
 
-```
-from SCCAF import *
+Given a clustering stored in an anndata object `ad` under the key 'louvain', we would like to understand the quality (discrimination between clusters) with SCCAF:
+
+```python
+from SCCAF import SCCAF_assessment, plot_roc
 import scanpy as sc
 
-y_prob, y_pred, y_test, clf, cvsm, acc = SCCAF_assessment(mat, clstr, n=100)
+y_prob, y_pred, y_test, clf, cvsm, acc = SCCAF_assessment(ad.X, ad.obs['louvain'], n=100)
 ```
 
-`mat` is the cell x feature expression matrix, i.e., adata.X, `clstr` is the clustering assignment. 
-And the returned accuracy is in the `acc`. 
+returned accuracy is in the `acc` variable.
 
 The ROC curve can be plotted:
 ```
@@ -54,6 +54,7 @@ plot_roc(y_prob, y_test, clf, cvsm=cvsm, acc=acc)
 Higher accuracy indicate better discrimination. And the ROC curve shows the problematic clusters. 
 
 ## Optimize an over-clustering
+
 Given an over-clustered result, SCCAF optimize the clustering by merging the cell clusters that cannot be discriminated by machine learning:
 
 ```python
