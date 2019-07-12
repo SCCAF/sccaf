@@ -18,7 +18,7 @@ setup(
             'numpy',
             'pandas',
             'louvain',
-            'sklearn',
+            'scikit-learn',
             'scanpy==1.3.7'],
         author='Chichau Miau',
         author_email='zmiao@ebi.ac.uk',
