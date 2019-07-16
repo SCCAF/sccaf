@@ -291,7 +291,7 @@ def self_projection(X, cell_types,
                     random_state=1,
                     n=0,
                     cv=5,
-                    whole=False):
+                    whole=False, n_jobs=None):
     # n = 100 should be good.
     """
     This is the core function for running self-projection.
@@ -322,6 +322,7 @@ def self_projection(X, cell_types,
         0 means no cross-validation.
     whole: `bool` optional (default: False)
         if measure the performance on the whole dataset (include training and test).
+    n_jobs: `int` optional, number of threads to use with the different classifiers (default: None - unlimited).
 
     return
     -----
@@ -343,24 +344,24 @@ def self_projection(X, cell_types,
                              stratify=cell_types, test_size=fraction)  # fraction means test size
 
     if classifier == 'LR':
-        clf = LogisticRegression(random_state=1, penalty=penalty, C=sparsity)
+        clf = LogisticRegression(random_state=1, penalty=penalty, C=sparsity, n_jobs=n_jobs)
     elif classifier == 'RF':
-        clf = RandomForestClassifier(random_state=1)
+        clf = RandomForestClassifier(random_state=1, n_jobs=n_jobs)
     elif classifier == 'GNB':
         clf = GaussianNB()
     elif classifier == 'GPC':
-        clf = GaussianProcessClassifier()
+        clf = GaussianProcessClassifier(n_jobs=n_jobs)
     elif classifier == 'SVM':
         clf = SVC(probability=True)
     elif classifier == 'SH':
-        clf = SGDClassifier(loss='squared_hinge')
+        clf = SGDClassifier(loss='squared_hinge', n_jobs=n_jobs)
     elif classifier == 'PCP':
-        clf = SGDClassifier(loss='perceptron')
+        clf = SGDClassifier(loss='perceptron', n_jobs=n_jobs)
     elif classifier == 'DT':
         clf = DecisionTreeClassifier()
     cvsm = 0
     if cv > 0:
-        cvs = cross_val_score(clf, X_train, np.array(y_train), cv=cv, scoring='accuracy')
+        cvs = cross_val_score(clf, X_train, np.array(y_train), cv=cv, scoring='accuracy', n_jobs=n_jobs)
         cvsm = cvs.mean()
         print("Mean CV accuracy: %.4f" % cvsm)
 
@@ -930,6 +931,7 @@ def SCCAF_optimize(ad,
                    mod='1',
                    c_iter=3,
                    n_iter=10,
+                   n_jobs=None,
                    start_iter=0,
                    sparsity=0.5,
                    n=100,
@@ -986,6 +988,7 @@ def SCCAF_optimize(ad,
         The sparsity parameter (C in sklearn.linear_model.LogisticRegression) for the logistic regression model.
     n: `int` optional (default: 100)
         Maximum number of cell included in the training set for each cluster of cells.
+    n_jobs: `int` number of jobs/threads to use (default: None - unlimited).
     fraction: `float` optional (default: 0.5)
         Fraction of data included in the training set. 0.5 means use half of the data for training,
         if half of the data is fewer than maximum number of cells (n).
@@ -1029,7 +1032,7 @@ def SCCAF_optimize(ad,
         # optimize
         y_prob, y_pred, y_test, clf, cvsm, acc = \
             self_projection(X, ad.obs[old_id], sparsity=sparsity, n=n,
-                            fraction=fraction, classifier=classifier)
+                            fraction=fraction, classifier=classifier, n_jobs=n_jobs)
         accs = [acc]
         if plot:
             aucs = plot_roc(y_prob, y_test, clf, cvsm=cvsm, acc=acc)
@@ -1048,7 +1051,8 @@ def SCCAF_optimize(ad,
         if use_projection: old_id1 = '%s_self-projection' % old_id
         for j in range(c_iter - 1):
             y_prob, y_pred, y_test, clf, _, acc = self_projection(X, ad.obs[old_id1], sparsity=sparsity, n=n,
-                                                                  fraction=fraction, classifier=classifier, cv=0)
+                                                                  fraction=fraction, classifier=classifier, cv=0,
+                                                                  n_jobs=n_jobs)
             accs.append(acc)
             cmat = confusion_matrix(y_test, y_pred, clf, labels=labels)
             xmat = normalize_confmat1(cmat, mod)
