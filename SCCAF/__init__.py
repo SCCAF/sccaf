@@ -1584,6 +1584,11 @@ def make_unique(dup_list):
 
 def regress_out(metadata, exprs, covariate_formula, design_formula='1', rcond=-1):
     """ Implementation of limma's removeBatchEffect function
+        :metadata the obs part of AnnData
+        :exprs the AnnData.X or the AnnData.raw.X
+        :covariate_formula formula for Patsy (variance we want to regress out: counts, batches, etc)
+        :design_formula design formula for Patsy (what we want to keep)
+        :rcond
     """
     # Ensure intercept is not part of covariates
     # covariate_formula is the variance to be kept, design_formula is the variance to regress out
