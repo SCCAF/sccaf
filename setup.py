@@ -19,7 +19,7 @@ setup(
             'pandas',
             'louvain',
             'scikit-learn',
-            'scanpy==1.3.7'],
+            'scanpy'],
         author='Chichau Miau',
         author_email='zmiao@ebi.ac.uk',
         license='MIT'
