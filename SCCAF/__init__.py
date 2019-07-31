@@ -1624,7 +1624,7 @@ def get_connection_matrix(ad_obs, key1, key2):
     df = ad_obs.groupby([key1,key2]).size().to_frame().reset_index()
     df.columns = [key1,key2,'counts']
     df2 = ad_obs[key2].value_counts()
-    df['size'] = df2[df[key2]].tolist()
+    df['size'] = df2[df[key2].tolist()].tolist()
     df['percent'] = df['counts']/df['size']
     df = df[df['percent']>0.1]
     df2 = df.groupby(key1).size()
