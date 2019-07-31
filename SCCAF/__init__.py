@@ -1678,7 +1678,7 @@ def SCCAF_optimize_all_V2(ad,
     start_iter = 0
     start_old = 0
     n_iter = 0
-    clstr_old = len(ad.obs['%s_result'%prefix].unique())
+    clstr_old = len(ad.obs['%s_Round%d'%(prefix,start_iter)].unique())
     while acc < min_acc:
         print("start_iter: %d" % start_iter)
         print("R1norm_cutoff: %f" % R1norm_cutoff)
