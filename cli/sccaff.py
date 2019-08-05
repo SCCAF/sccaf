@@ -31,6 +31,8 @@ parser.add_argument("-a", "--min-accuracy", type=float,
                     help="Accuracy threshold for convergence of the optimisation procedure.")
 parser.add_argument("-p", "--prefix",
                     help="Prefix for clustering labels", default="L1")
+parser.add_argument("-c", "--cores",
+                    help="Number of processors to use", type=int, default=1)
 parser.add_argument("--produce-rounds-summary", action="store_true",
                     help="Set to produce summary files for each round of optimisation"
                     )
@@ -84,9 +86,10 @@ if args.optimise:
         # We use the predefined clustering (either internal or external).
         ad.obs['{}_Round0'.format(args.prefix)] = y
 
-    sf.SCCAF_optimize_all_V2(min_acc=args.min_accuracy, ad=ad, plot=False)
+    sf.SCCAF_optimize_all_V2(min_acc=args.min_accuracy, ad=ad, plot=False, n_jobs=args.cores)
     #sc.pl.scatter(ad, base=args.visualisation, color=)
-    y_prob, y_pred, y_test, clf, cvsm, acc = sf.SCCAF_assessment(X, ad.obs['{}_result'.format(args.prefix)])
+    y_prob, y_pred, y_test, clf, cvsm, acc = sf.SCCAF_assessment(X, ad.obs['{}_result'.format(args.prefix)],
+                                                                 n_jobs=args.cores)
     aucs = sf.plot_roc(y_prob, y_test, clf, cvsm=cvsm, acc=acc)
     plt.savefig('optim.png')
     ad.write(args.output_file)

@@ -21,6 +21,8 @@ parser.add_argument("-s", "--slot-for-existing-clustering",
 parser.add_argument("--iterations",
                     help="Number of times to iterate the assesment to build distributions of accuracies", type=int,
                     default=1)
+parser.add_argument("-c", "--cores",
+                    help="Number of processors to use", type=int, default=1)
 parser.add_argument("--use-pca",
                     help="Use PCA components for assesment (needs to be available in the ann data object) "
                          "(default: False)",
@@ -62,7 +64,7 @@ if args.use_pca:
 
 accs =[]
 for i in arange(args.iterations):
-    y_prob, y_pred, y_test, clf, cvsm, acc = sf.SCCAF_assessment(X, y)
+    y_prob, y_pred, y_test, clf, cvsm, acc = sf.SCCAF_assessment(X, y, n_jobs=args.cores)
     if args.iterations == 1:
         aucs = sf.plot_roc(y_prob, y_test, clf, cvsm=cvsm, acc=acc)
         plt.savefig('roc-curve.png')

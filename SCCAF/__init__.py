@@ -1720,6 +1720,7 @@ def SCCAF_optimize_V2(ad,
                    basis = 'umap',
                    c_iter = 3,
                    n_iter = 10,
+                   n_jobs = None,
                    start_iter = 0,
                    sparsity = 0.5,
                    n = 100,
@@ -1807,7 +1808,7 @@ def SCCAF_optimize_V2(ad,
         # optimize
         y_prob, y_pred, y_test, clf, cvsm, acc = \
             self_projection(X, ad.obs[old_id], sparsity=sparsity, n=n,
-                            fraction=fraction, classifier=classifier)
+                            fraction=fraction, classifier=classifier, n_jobs=n_jobs)
         accs = [acc]
         ad.obs['%s_self-projection' % old_id] = clf.predict(X)
         
@@ -1827,7 +1828,8 @@ def SCCAF_optimize_V2(ad,
             old_id1 = '%s_self-projection' % old_id
         for j in range(c_iter - 1):
             y_prob, y_pred, y_test, clf, _, acc = self_projection(X, ad.obs[old_id1], sparsity=sparsity, n=n,
-                                                                  fraction=fraction, classifier=classifier, cv=0)
+                                                                  fraction=fraction, classifier=classifier, cv=0,
+                                                                  n_jobs=n_jobs)
             accs.append(acc)
             cmat = confusion_matrix(y_test, y_pred, clf, labels=labels)
             xmat = normalize_confmat1(cmat, mod)
