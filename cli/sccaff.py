@@ -33,11 +33,15 @@ parser.add_argument("-p", "--prefix",
                     help="Prefix for clustering labels", default="L1")
 parser.add_argument("-c", "--cores",
                     help="Number of processors to use", type=int, default=1)
+parser.add_argument("-v", "--optimise-version",
+                    help="Either 1 or 2 for v1 or v2", type=int, default=1)
 parser.add_argument("--produce-rounds-summary", action="store_true",
                     help="Set to produce summary files for each round of optimisation"
                     )
 
 args = parser.parse_args()
+
+logging.basicConfig(level=logging.INFO)
 
 if (not args.skip_assessment) and not (args.external_clustering_tsv or args.slot_for_existing_clustering):
     logging.error("Either --external-clustering-tsv or --slot-for-existing-clustering needs to be set "
@@ -89,7 +93,10 @@ if args.optimise:
         # We use the predefined clustering (either internal or external).
         ad.obs['{}_Round0'.format(args.prefix)] = y
 
-    sf.SCCAF_optimize_all_V2(min_acc=args.min_accuracy, ad=ad, plot=False, n_jobs=args.cores)
+    if args.optimise_version == 1:
+        sf.SCCAF_optimize_all(min_acc=args.min_accuracy, ad=ad, plot=False, n_jobs=args.cores)
+    else:
+        sf.SCCAF_optimize_all_V2(min_acc=args.min_accuracy, ad=ad, plot=False, n_jobs=args.cores)
     logging.info("Run optimise: DONE")
     #sc.pl.scatter(ad, base=args.visualisation, color=)
     y_prob, y_pred, y_test, clf, cvsm, acc = sf.SCCAF_assessment(X, ad.obs['{}_result'.format(args.prefix)],
