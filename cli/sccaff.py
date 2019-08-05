@@ -5,7 +5,7 @@ import scanpy.api as sc
 import SCCAF as sf
 import logging
 import argparse
-from re import sub
+from re import sub, match
 from sys import exit
 
 matplotlib.use('Agg')
@@ -109,7 +109,7 @@ if args.optimise:
     if args.produce_rounds_summary:
         rounds = []
         for round_key in ad.obs_keys():
-            if round_key.startswith(args.prefix):
+            if round_key.startswith(args.prefix) and match(r'.*Round\d+$'):
                 rounds.append(round_key)
         rounds.sort(key=extract_round_number)
 
