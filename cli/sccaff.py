@@ -109,7 +109,7 @@ if args.optimise:
     if args.produce_rounds_summary:
         rounds = []
         for round_key in ad.obs_keys():
-            if round_key.startswith(args.prefix) and match(r'.*Round\d+$'):
+            if round_key.startswith(args.prefix) and match(r'.*Round\d+$', round_key):
                 rounds.append(round_key)
         rounds.sort(key=extract_round_number)
 
