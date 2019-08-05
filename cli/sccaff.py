@@ -1,14 +1,14 @@
 import pandas as pd
 import matplotlib
-
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import scanpy.api as sc
 import SCCAF as sf
 import logging
-
 import argparse
+from re import sub
 from sys import exit
+
+matplotlib.use('Agg')
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-i", "--input-file",
@@ -31,6 +31,9 @@ parser.add_argument("-a", "--min-accuracy", type=float,
                     help="Accuracy threshold for convergence of the optimisation procedure.")
 parser.add_argument("-p", "--prefix",
                     help="Prefix for clustering labels", default="L1")
+parser.add_argument("--produce-rounds-summary", action="store_true",
+                    help="Set to produce summary files for each round of optimisation"
+                    )
 
 args = parser.parse_args()
 
@@ -60,6 +63,20 @@ if not args.skip_assessment:
     plt.savefig('roc-curve.png')
     plt.close()
 
+
+def atoi(text):
+    return int(text) if text.isdigit() else text
+
+
+def extract_round_number(text):
+    '''
+    Obtain round number from the label so that it can be used for sorting rounds (specifying key).
+    '''
+    # return atoi(text.replace('{}_Round'.format(args.prefix), ""))
+    round_num = sub(r'.*_Round(\d+)$', r'\1', text)
+    return int(round_num) if round_num.isdigit() else round_num
+
+
 if args.optimise:
     if args.resolution:
         sc.tl.louvain(ad, resolution=args.resolution, key_added='{}_Round0'.format(args.prefix))
@@ -67,10 +84,23 @@ if args.optimise:
         # We use the predefined clustering (either internal or external).
         ad.obs['{}_Round0'.format(args.prefix)] = y
 
-    sf.SCCAF_optimize_all(min_acc=args.min_accuracy, ad=ad, plot=False)
+    sf.SCCAF_optimize_all_V2(min_acc=args.min_accuracy, ad=ad, plot=False)
     #sc.pl.scatter(ad, base=args.visualisation, color=)
     y_prob, y_pred, y_test, clf, cvsm, acc = sf.SCCAF_assessment(X, ad.obs['{}_result'.format(args.prefix)])
-    # Run 100 assement and look at the dispersion and average of acc, and with that try to pick the best round.
     aucs = sf.plot_roc(y_prob, y_test, clf, cvsm=cvsm, acc=acc)
     plt.savefig('optim.png')
     ad.write(args.output_file)
+
+    if args.produce_rounds_summary:
+        rounds = []
+        for round_key in ad.obs_keys():
+            if round_key.startswith(args.prefix):
+                rounds.append(round_key)
+        rounds.sort(key=extract_round_number)
+
+        with open("rounds.txt", 'w') as f:
+            for item in rounds:
+                f.write("%s\n" % item)
+
+
+
