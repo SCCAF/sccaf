@@ -24,9 +24,8 @@ parser.add_argument("--iterations",
 parser.add_argument("-c", "--cores",
                     help="Number of processors to use", type=int, default=1)
 parser.add_argument("--use-pca",
-                    help="Use PCA components for assesment (needs to be available in the ann data object) "
-                         "(default: False)",
-                    type=bool, default=False, action='store_true')
+                    help="Use PCA components for assesment (needs to be available in the ann data ) (default: False)",
+                    action='store_true')
 
 args = parser.parse_args()
 
