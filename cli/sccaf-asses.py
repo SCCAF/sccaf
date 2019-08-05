@@ -71,5 +71,5 @@ for i in arange(args.iterations):
     else:
         accs.append(acc)
 
-if args.iterations == 1:
+if args.iterations > 1:
     pd.DataFrame(accs, columns=[column_name]).to_csv(accs_out_fn, index=False)
