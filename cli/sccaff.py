@@ -45,6 +45,7 @@ if (not args.skip_assessment) and not (args.external_clustering_tsv or args.slot
     exit(1)
 
 ad = sc.read(args.input_file)
+logging.info("Read ann data file: DONE")
 
 if args.external_clustering_tsv:
     cluster = pd.read_table(args.external_clustering_tsv, usecols=[0, 1], index_col=0, header=0)
@@ -60,7 +61,8 @@ else:
     X = ad.X
 
 if not args.skip_assessment:
-    y_prob, y_pred, y_test, clf, cvsm, acc = sf.SCCAF_assessment(X, y)
+    y_prob, y_pred, y_test, clf, cvsm, acc = sf.SCCAF_assessment(X, y, n_jobs=args.cores)
+    logging.info("First assesment: DONE")
     aucs = sf.plot_roc(y_prob, y_test, clf, cvsm=cvsm, acc=acc)
     plt.savefig('roc-curve.png')
     plt.close()
@@ -82,14 +84,17 @@ def extract_round_number(text):
 if args.optimise:
     if args.resolution:
         sc.tl.louvain(ad, resolution=args.resolution, key_added='{}_Round0'.format(args.prefix))
+        logging.info("Run louvain for starting point: DONE")
     else:
         # We use the predefined clustering (either internal or external).
         ad.obs['{}_Round0'.format(args.prefix)] = y
 
     sf.SCCAF_optimize_all_V2(min_acc=args.min_accuracy, ad=ad, plot=False, n_jobs=args.cores)
+    logging.info("Run optimise: DONE")
     #sc.pl.scatter(ad, base=args.visualisation, color=)
     y_prob, y_pred, y_test, clf, cvsm, acc = sf.SCCAF_assessment(X, ad.obs['{}_result'.format(args.prefix)],
                                                                  n_jobs=args.cores)
+    logging.info("Posterior assessment: DONE")
     aucs = sf.plot_roc(y_prob, y_test, clf, cvsm=cvsm, acc=acc)
     plt.savefig('optim.png')
     ad.write(args.output_file)
@@ -105,5 +110,5 @@ if args.optimise:
             for item in rounds:
                 f.write("%s\n" % item)
 
-
+    logging.info("Write output: DONE")
 
