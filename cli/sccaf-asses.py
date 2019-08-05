@@ -29,7 +29,7 @@ parser.add_argument("--use-pca",
 
 args = parser.parse_args()
 
-if not (args.external_clustering_tsv and args.slot_for_existing_clustering):
+if not (args.external_clustering_tsv or args.slot_for_existing_clustering):
     logging.error("Either --external-clustering-tsv or --slot-for-existing-clustering needs to be set ")
     exit(1)
 
