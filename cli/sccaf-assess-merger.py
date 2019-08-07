@@ -9,8 +9,8 @@ parser.add_argument("-i", "--input-directory", required=True,
                     help="Path to input directory where asses results are")
 parser.add_argument("-r", "--rounds-file", required=True,
                     help="File listing rounds ordered")
-parser.add_argument("-o", "--output-report-file", default='report.pdf',
-                    help="Path for output report file")
+parser.add_argument("-o", "--output-plot", default='sccaf_assesment_accuracies.pdf',
+                    help="Path for merged assessment plot. Extension determines format (pdf/png).")
 
 args = parser.parse_args()
 
@@ -43,5 +43,5 @@ df_melted = df_merged.melt(var_name='Round', value_name='Accuracy')
 
 fig, ax = pyplot.subplots(figsize=(9, 7))
 sb.violinplot(x="Round", y="Accuracy", data=df_melted)
-pyplot.savefig('sccaf_assesment_accuracies.png')
+pyplot.savefig(args.output_plot)
 
