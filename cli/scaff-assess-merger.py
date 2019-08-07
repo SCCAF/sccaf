@@ -38,8 +38,10 @@ for round in rounds_df['rounds']:
     df_merged[round] = acc_array[acc_array.columns.array[0]]
 
 # Now plot the merged data
+df_melted = df_merged.melt(var_name='Round', value_name='Accuracy')
+
 
 fig, ax = pyplot.subplots(figsize=(9, 7))
-sb.violinplot(ax=ax, y=df_merged)
+sb.violinplot(x="Round", y="Accuracy", data=df_melted)
 pyplot.savefig('sccaf_assesment_accuracies.png')
 
