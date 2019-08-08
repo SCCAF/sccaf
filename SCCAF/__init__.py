@@ -1629,7 +1629,7 @@ def get_connection_matrix(ad_obs, key1, key2):
     df = ad_obs.groupby([key1,key2]).size().to_frame().reset_index()
     df.columns = [key1,key2,'counts']
     df2 = ad_obs[key2].value_counts()
-    df['size'] = df2[df[key2]].tolist()
+    df['size'] = df2[df[key2].tolist()].tolist()
     df['percent'] = df['counts']/df['size']
     df = df[df['percent']>0.1]
     df2 = df.groupby(key1).size()
@@ -1683,7 +1683,7 @@ def SCCAF_optimize_all_V2(ad,
     start_iter = 0
     start_old = 0
     n_iter = 0
-    clstr_old = len(ad.obs['%s_result'%prefix].unique())
+    clstr_old = len(ad.obs['%s_Round%d'%(prefix,start_iter)].unique())
     while acc < min_acc:
         print("start_iter: %d" % start_iter)
         print("R1norm_cutoff: %f" % R1norm_cutoff)
