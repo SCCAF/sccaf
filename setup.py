@@ -19,7 +19,8 @@ setup(
             'pandas',
             'louvain',
             'scikit-learn',
-            'scanpy'],
+            'scanpy==1.3.7'],
+        scripts=['cli/sccaf', 'cli/sccaf-assess', 'cli/sccaf-assess-merger'],
         author='Chichau Miau',
         author_email='zmiao@ebi.ac.uk',
         license='MIT'

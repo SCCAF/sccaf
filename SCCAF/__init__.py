@@ -1584,6 +1584,11 @@ def make_unique(dup_list):
 
 def regress_out(metadata, exprs, covariate_formula, design_formula='1', rcond=-1):
     """ Implementation of limma's removeBatchEffect function
+        :metadata the obs part of AnnData
+        :exprs the AnnData.X or the AnnData.raw.X
+        :covariate_formula formula for Patsy (variance we want to regress out: counts, batches, etc)
+        :design_formula design formula for Patsy (what we want to keep)
+        :rcond
     """
     # Ensure intercept is not part of covariates
     # covariate_formula is the variance to be kept, design_formula is the variance to regress out
@@ -1645,12 +1650,13 @@ def get_connection_matrix(ad_obs, key1, key2):
                 mat.loc[i,j] = mat.loc[j,i] = 1
     return mat
 
+
 def SCCAF_optimize_all_V2(ad,
-                       min_acc=0.9,
-                       R1norm_cutoff=0.5,
-                       R1norm_step=0.01,
-                       prefix = 'L1',
-                       *args, **kwargs):
+                          min_acc=0.9,
+                          R1norm_cutoff=0.5,
+                          R1norm_step=0.01,
+                          prefix='L1',
+                          *args, **kwargs):
     """
     ad: `AnnData`
         The AnnData object of the expression profile.
@@ -1706,25 +1712,27 @@ def SCCAF_optimize_all_V2(ad,
         n_iter +=1
         if n_iter >10:
             break
- 
+
+
 def SCCAF_optimize_V2(ad,
-                   prefix = 'L1',
-                   use = 'raw',
-                   use_projection = False,
-                   plot = True,
-                   basis = 'umap',
-                   c_iter = 3,
-                   n_iter = 10,
-                   start_iter = 0,
-                   sparsity = 0.5,
-                   n = 100,
-                   fraction = 0.5,
-                   R1norm_only = False,
-                   R1norm_cutoff = 0.1,
-                   mod = '1',
-                   key1 = None,
-                   classifier = "LR", 
-                   min_acc = 1):
+                      prefix='L1',
+                      use='raw',
+                      use_projection=False,
+                      plot=True,
+                      basis='umap',
+                      c_iter=3,
+                      n_iter=10,
+                      n_jobs=None,
+                      start_iter=0,
+                      sparsity=0.5,
+                      n=100,
+                      fraction=0.5,
+                      R1norm_only=False,
+                      R1norm_cutoff=0.1,
+                      mod='1',
+                      undercluster_bound_key=None,
+                      classifier="LR",
+                      min_acc=1):
     """
     This is a self-projection confusion matrix directed cluster optimization function.
 
@@ -1802,7 +1810,7 @@ def SCCAF_optimize_V2(ad,
         # optimize
         y_prob, y_pred, y_test, clf, cvsm, acc = \
             self_projection(X, ad.obs[old_id], sparsity=sparsity, n=n,
-                            fraction=fraction, classifier=classifier)
+                            fraction=fraction, classifier=classifier, n_jobs=n_jobs)
         accs = [acc]
         ad.obs['%s_self-projection' % old_id] = clf.predict(X)
         
@@ -1822,7 +1830,8 @@ def SCCAF_optimize_V2(ad,
             old_id1 = '%s_self-projection' % old_id
         for j in range(c_iter - 1):
             y_prob, y_pred, y_test, clf, _, acc = self_projection(X, ad.obs[old_id1], sparsity=sparsity, n=n,
-                                                                  fraction=fraction, classifier=classifier, cv=0)
+                                                                  fraction=fraction, classifier=classifier, cv=0,
+                                                                  n_jobs=n_jobs)
             accs.append(acc)
             cmat = confusion_matrix(y_test, y_pred, clf, labels=labels)
             xmat = normalize_confmat1(cmat, mod)
@@ -1847,8 +1856,8 @@ def SCCAF_optimize_V2(ad,
         if R1norm_only:
             groups = cluster_adjmat(R1mat, cutoff=R1norm_cutoff)
         else:
-            if not key1 is None:
-                conn_mat = get_connection_matrix(ad_obs = ad.obs, key1 = key1, key2 = old_id)
+            if undercluster_bound_key:
+                conn_mat = get_connection_matrix(ad_obs=ad.obs, key1=undercluster_bound_key, key2=old_id)
                 zmat = np.minimum.reduce([(R1mat > R1norm_cutoff), conn_mat.values])
                 groups = cluster_adjmat(zmat, cutoff=0)
             else:
