@@ -9,7 +9,7 @@ print(find_packages())
 
 setup(
         name='SCCAF',
-        version='0.0.2',
+        version='0.0.3',
         description='Single-Cell Clustering Assessment Framework',
         long_description=readme(),
         long_description_content_type='text/markdown',
@@ -18,8 +18,9 @@ setup(
             'numpy',
             'pandas',
             'louvain',
-            'sklearn',
+            'scikit-learn',
             'scanpy==1.3.7'],
+        scripts=['cli/sccaf', 'cli/sccaf-assess', 'cli/sccaf-assess-merger'],
         author='Chichau Miau',
         author_email='zmiao@ebi.ac.uk',
         license='MIT'

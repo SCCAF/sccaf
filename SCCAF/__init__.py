@@ -291,7 +291,7 @@ def self_projection(X, cell_types,
                     random_state=1,
                     n=0,
                     cv=5,
-                    whole=False):
+                    whole=False, n_jobs=None):
     # n = 100 should be good.
     """
     This is the core function for running self-projection.
@@ -322,6 +322,7 @@ def self_projection(X, cell_types,
         0 means no cross-validation.
     whole: `bool` optional (default: False)
         if measure the performance on the whole dataset (include training and test).
+    n_jobs: `int` optional, number of threads to use with the different classifiers (default: None - unlimited).
 
     return
     -----
@@ -343,24 +344,24 @@ def self_projection(X, cell_types,
                              stratify=cell_types, test_size=fraction)  # fraction means test size
 
     if classifier == 'LR':
-        clf = LogisticRegression(random_state=1, penalty=penalty, C=sparsity)
+        clf = LogisticRegression(random_state=1, penalty=penalty, C=sparsity, n_jobs=n_jobs)
     elif classifier == 'RF':
-        clf = RandomForestClassifier(random_state=1)
+        clf = RandomForestClassifier(random_state=1, n_jobs=n_jobs)
     elif classifier == 'GNB':
         clf = GaussianNB()
     elif classifier == 'GPC':
-        clf = GaussianProcessClassifier()
+        clf = GaussianProcessClassifier(n_jobs=n_jobs)
     elif classifier == 'SVM':
         clf = SVC(probability=True)
     elif classifier == 'SH':
-        clf = SGDClassifier(loss='squared_hinge')
+        clf = SGDClassifier(loss='squared_hinge', n_jobs=n_jobs)
     elif classifier == 'PCP':
-        clf = SGDClassifier(loss='perceptron')
+        clf = SGDClassifier(loss='perceptron', n_jobs=n_jobs)
     elif classifier == 'DT':
         clf = DecisionTreeClassifier()
     cvsm = 0
     if cv > 0:
-        cvs = cross_val_score(clf, X_train, np.array(y_train), cv=cv, scoring='accuracy')
+        cvs = cross_val_score(clf, X_train, np.array(y_train), cv=cv, scoring='accuracy', n_jobs=n_jobs)
         cvsm = cvs.mean()
         print("Mean CV accuracy: %.4f" % cvsm)
 
@@ -930,6 +931,7 @@ def SCCAF_optimize(ad,
                    mod='1',
                    c_iter=3,
                    n_iter=10,
+                   n_jobs=None,
                    start_iter=0,
                    sparsity=0.5,
                    n=100,
@@ -986,6 +988,7 @@ def SCCAF_optimize(ad,
         The sparsity parameter (C in sklearn.linear_model.LogisticRegression) for the logistic regression model.
     n: `int` optional (default: 100)
         Maximum number of cell included in the training set for each cluster of cells.
+    n_jobs: `int` number of jobs/threads to use (default: None - unlimited).
     fraction: `float` optional (default: 0.5)
         Fraction of data included in the training set. 0.5 means use half of the data for training,
         if half of the data is fewer than maximum number of cells (n).
@@ -1029,7 +1032,7 @@ def SCCAF_optimize(ad,
         # optimize
         y_prob, y_pred, y_test, clf, cvsm, acc = \
             self_projection(X, ad.obs[old_id], sparsity=sparsity, n=n,
-                            fraction=fraction, classifier=classifier)
+                            fraction=fraction, classifier=classifier, n_jobs=n_jobs)
         accs = [acc]
         if plot:
             aucs = plot_roc(y_prob, y_test, clf, cvsm=cvsm, acc=acc)
@@ -1048,7 +1051,8 @@ def SCCAF_optimize(ad,
         if use_projection: old_id1 = '%s_self-projection' % old_id
         for j in range(c_iter - 1):
             y_prob, y_pred, y_test, clf, _, acc = self_projection(X, ad.obs[old_id1], sparsity=sparsity, n=n,
-                                                                  fraction=fraction, classifier=classifier, cv=0)
+                                                                  fraction=fraction, classifier=classifier, cv=0,
+                                                                  n_jobs=n_jobs)
             accs.append(acc)
             cmat = confusion_matrix(y_test, y_pred, clf, labels=labels)
             xmat = normalize_confmat1(cmat, mod)
@@ -1580,6 +1584,11 @@ def make_unique(dup_list):
 
 def regress_out(metadata, exprs, covariate_formula, design_formula='1', rcond=-1):
     """ Implementation of limma's removeBatchEffect function
+        :metadata the obs part of AnnData
+        :exprs the AnnData.X or the AnnData.raw.X
+        :covariate_formula formula for Patsy (variance we want to regress out: counts, batches, etc)
+        :design_formula design formula for Patsy (what we want to keep)
+        :rcond
     """
     # Ensure intercept is not part of covariates
     # covariate_formula is the variance to be kept, design_formula is the variance to regress out
@@ -1615,3 +1624,256 @@ def find_high_resolution(ad, resolution=4, n=100):
         if ad.obs['leiden'].value_counts().min() > n:
             break
         cut -= 0.5
+
+def get_connection_matrix(ad_obs, key1, key2):
+    df = ad_obs.groupby([key1,key2]).size().to_frame().reset_index()
+    df.columns = [key1,key2,'counts']
+    df2 = ad_obs[key2].value_counts()
+    df['size'] = df2[df[key2].tolist()].tolist()
+    df['percent'] = df['counts']/df['size']
+    df = df[df['percent']>0.1]
+    df2 = df.groupby(key1).size()
+    df2 = df2[df2>1]
+    df = df[df[key1].isin(df2.index)]
+
+    dim = len(ad_obs[key2].unique())
+    mat = pd.DataFrame(np.zeros([dim,dim])).astype(int)
+    mat.columns = mat.columns.astype(str)
+    mat.index = mat.index.astype(str)
+
+    import itertools
+    grouped = df.groupby(key1)
+    for name, group in grouped:
+        x = group[key2]
+        if len(x)>0:
+            for i,j in list(itertools.combinations(x.tolist(), 2)):
+                mat.loc[i,j] = mat.loc[j,i] = 1
+    return mat
+
+
+def SCCAF_optimize_all_V2(ad,
+                          min_acc=0.9,
+                          R1norm_cutoff=0.5,
+                          R1norm_step=0.01,
+                          prefix='L1',
+                          *args, **kwargs):
+    """
+    ad: `AnnData`
+        The AnnData object of the expression profile.
+    min_acc: `float` optional (default: 0.9)
+        The minimum self-projection accuracy to be optimized for.
+        e.g., 0.9 means the clustering optimization (merging process)
+        will not stop until the self-projection accuracy is above 90%.
+    R1norm_cutoff: `float` optional (default: 0.5)
+        The start cutoff for R1norm of confusion matrix.
+        e.g., 0.5 means use 0.5 as a cutoff to discretize the confusion matrix after R1norm.
+        the discretized matrix is used to construct the connection graph for clustering optimization.
+    R2norm_cutoff: `float` optional (default: 0.05)
+        The start cutoff for R2norm of confusion matrix.
+    R1norm_step: `float` optional (default: 0.01)
+        The reduce step for minimum R1norm value.
+        Each round of optimization calls the function `SCCAF_optimize`.
+        The start of the next round of optimization is based on a new
+        cutoff for the R1norm of the confusion matrix. This cutoff is
+        determined by the minimum R1norm value in the previous round minus the R1norm_step value.
+    R2norm_step: `float` optional (default: 0.001)
+        The reduce step for minimum R2norm value.
+    """
+    acc = 0
+    c = 0
+    start_iter = 0
+    start_old = 0
+    n_iter = 0
+    clstr_old = len(ad.obs['%s_Round%d'%(prefix,start_iter)].unique())
+    while acc < min_acc:
+        print("start_iter: %d" % start_iter)
+        print("R1norm_cutoff: %f" % R1norm_cutoff)
+        print("Accuracy: %f" % acc)
+        print("======================")
+        ad, m1, acc, start_iter = SCCAF_optimize_V2(ad = ad,
+                                                    R1norm_cutoff=R1norm_cutoff,          
+                                                    start_iter=start_iter,
+                                                    min_acc=min_acc, *args, **kwargs)
+        clstr_new = len(ad.obs['%s_result'%prefix].unique())
+        if clstr_new >= clstr_old:
+            c +=1
+            print('c: %d'%c)
+        if start_iter == start_old:
+            c +=1
+            start_old = start_iter
+        
+        if c > 10:
+            break
+        else:
+            clstr_new = clstr_old
+        print("m1: %f" % m1)
+        print("Accuracy: %f" % acc)
+        R1norm_cutoff = m1 - R1norm_step
+        n_iter +=1
+        if n_iter >10:
+            break
+
+
+def SCCAF_optimize_V2(ad,
+                      prefix='L1',
+                      use='raw',
+                      use_projection=False,
+                      plot=True,
+                      basis='umap',
+                      c_iter=3,
+                      n_iter=10,
+                      n_jobs=None,
+                      start_iter=0,
+                      sparsity=0.5,
+                      n=100,
+                      fraction=0.5,
+                      R1norm_only=False,
+                      R1norm_cutoff=0.1,
+                      mod='1',
+                      undercluster_bound_key=None,
+                      classifier="LR",
+                      min_acc=1):
+    """
+    This is a self-projection confusion matrix directed cluster optimization function.
+
+    Input
+    -----
+    ad: `AnnData`
+        The AnnData object of the expression profile.
+    prefix: `String`, optional (default: 'L1')
+        The name of the optimization, which set as a prefix.
+        e.g., the prefix = 'L1', the start round of optimization clustering is based on
+        'L1_Round0'. So we need to assign an over-clustering state as a start point.
+        e.g., ad.obs['L1_Round0'] = ad.obs['louvain']
+    use: `String`, optional (default: 'raw')
+        Use what features to train the classifier. Three choices:
+        'raw' uses all the features;
+        'hvg' uses the highly variable genes in the anndata object ad.var_names slot;
+        'pca' uses the PCA data in the anndata object ad.obsm['X_pca'] slot.
+    R1norm_only: `bool` optional (default: False)
+        If only use the confusion matrix(R1norm) for clustering optimization.
+    plot: `bool` optional (default: True)
+        If plot the self-projectioin results, ROC curves and confusion matrices,
+        during the optimization.
+    mod: `string` optional (default: '1')
+        two directions of normalization of confusion matrix for R1norm.
+    c_iter: `int` optional (default: 3)
+        Number of iterations of sampling for the confusion matrix.
+        The minimum value of confusion rate in all the iterations is used as the confusion rate between two clusters.
+    n_iter： `int` optional (default: 10)
+        Maximum number of iterations(Rounds) for the clustering optimization.
+    start_iter： `int` optional (default: 0)
+        The start round of the optimization. e.g., start_iter = 3,
+        the optimization will start from ad.obs['%s_3'%prefix].
+    sparsity: `fload` optional (default: 0.5)
+        The sparsity parameter (C in sklearn.linear_model.LogisticRegression) for the logistic regression model.
+    n: `int` optional (default: 100)
+        Maximum number of cell included in the training set for each cluster of cells.
+    fraction: `float` optional (default: 0.5)
+        Fraction of data included in the training set. 0.5 means use half of the data for training,
+        if half of the data is fewer than maximum number of cells (n).
+    R1norm_cutoff: `float` optional (default: 0.1)
+        The cutoff for the confusion rate (R1norm) between two clusters.
+        0.1 means we allow maximum 10% of the one cluster confused as another cluster.
+    key1: `str` optional
+		the clustering boundary for under-clustering. Set a low resolution in louvain/leiden clustering and give
+		the key as the underclustering boundary.
+    classifier: `String` optional (default: 'LR')
+        a machine learning model in "LR" (logistic regression), \
+        "RF" (Random Forest), "GNB"(Gaussion Naive Bayes), "SVM" (Support Vector Machine) and "DT"(Decision Tree).
+    min_acc: `float`
+		the minimum total accuracy to be achieved. Above this threshold, the optimization will stop.
+
+    return
+    -----
+    The modified anndata object, with a slot "%s_result"%prefix
+        assigned as the clustering optimization results.
+    """
+
+    X = None
+    if use == 'raw':
+        X = ad.raw.X
+    elif use == 'pca':
+        if 'X_pca' not in ad.obsm.dtype.fields:
+            raise ValueError("`adata.obsm['X_pca']` doesn't exist. Run `sc.pp.pca` first.")
+        X = ad.obsm['X_pca']
+    else:
+        X = ad[:,ad.var['highly_variable']].X
+
+    for i in range(start_iter, start_iter + n_iter):
+        print("Round%d ..." % (i + 1))
+        old_id = '%s_Round%d' % (prefix, i)
+        new_id = '%s_Round%d' % (prefix, i + 1)
+
+        labels = np.sort(ad.obs[old_id].unique().astype(int)).astype(str)
+
+        # optimize
+        y_prob, y_pred, y_test, clf, cvsm, acc = \
+            self_projection(X, ad.obs[old_id], sparsity=sparsity, n=n,
+                            fraction=fraction, classifier=classifier, n_jobs=n_jobs)
+        accs = [acc]
+        ad.obs['%s_self-projection' % old_id] = clf.predict(X)
+        
+        if plot:
+            aucs = plot_roc(y_prob, y_test, clf, cvsm=cvsm, acc=acc)
+            plt.show()
+
+            sc.pl.scatter(ad, basis=basis, color=['%s_self-projection' % old_id], \
+                          color_map="RdYlBu_r", legend_loc='on data', frameon=False)
+
+        cmat = confusion_matrix(y_test, y_pred, clf, labels=labels)
+        xmat = normalize_confmat1(cmat, mod)
+        xmats = [xmat]
+        cmats = [np.array(cmat)]
+        old_id1 = old_id
+        if use_projection: 
+            old_id1 = '%s_self-projection' % old_id
+        for j in range(c_iter - 1):
+            y_prob, y_pred, y_test, clf, _, acc = self_projection(X, ad.obs[old_id1], sparsity=sparsity, n=n,
+                                                                  fraction=fraction, classifier=classifier, cv=0,
+                                                                  n_jobs=n_jobs)
+            accs.append(acc)
+            cmat = confusion_matrix(y_test, y_pred, clf, labels=labels)
+            xmat = normalize_confmat1(cmat, mod)
+            xmats.append(xmat)
+            cmats.append(np.array(cmat))
+        R1mat = np.minimum.reduce(xmats)
+
+        m1 = np.max(R1mat)
+        if np.isnan(m1):
+            m1 = 1.
+        print("Max R1mat: %f" % m1)
+
+        if np.min(accs) > min_acc:
+            ad.obs['%s_result' % prefix] = ad.obs[old_id]
+            print("Converge1!")
+            break
+
+        if plot:
+            plot_heatmap_gray(R1mat, 'Normalized Confusion Matrix (R1norm)')
+        
+
+        if R1norm_only:
+            groups = cluster_adjmat(R1mat, cutoff=R1norm_cutoff)
+        else:
+            if undercluster_bound_key:
+                conn_mat = get_connection_matrix(ad_obs=ad.obs, key1=undercluster_bound_key, key2=old_id)
+                zmat = np.minimum.reduce([(R1mat > R1norm_cutoff), conn_mat.values])
+                groups = cluster_adjmat(zmat, cutoff=0)
+            else:
+                groups = cluster_adjmat(R1mat, cutoff=R1norm_cutoff)
+
+        if len(np.unique(groups)) == len(ad.obs[old_id].unique()):
+            ad.obs['%s_result' % prefix] = ad.obs[old_id]
+            print("Converged!")
+            break
+        
+        merge_cluster(ad, old_id1, new_id, groups)
+        
+        if plot:
+            sc.pl.scatter(ad, basis=basis, color=[new_id], color_map="RdYlBu_r", legend_loc='on data')
+        if len(np.unique(groups)) <= 1:
+            ad.obs['%s_result' % prefix] = ad.obs[new_id]
+            print("no clustering!")
+            break
+    return ad, m1, np.min(accs), i

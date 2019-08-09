@@ -25,7 +25,7 @@ pip3 install .
 
 if your python environment is configured for python 3, then you should be able to replace python3 for just python (although pip3 needs to be kept). In time this will be simplified by a simple pip call.
 
-# Command line runs
+# Usage within Python environment
 
 ## Use with pre-clustered `anndata` object in the [SCANPY](https://scanpy.readthedocs.io/en/stable/) package
 
@@ -81,3 +81,48 @@ then remove the `plots=False`.
 
 
 Within the anndata object, assignments of cells to clusters will be left in `adata.obs['<prefix>_Round<roundNumber>']`.
+
+# Usage from the command line
+
+We have added convenience methods to use from the command line argument in the shell.
+This facilitate as well the inclusion in workflow systems.
+
+## Optimisation and general purpose usage
+
+Given an annData dataset with louvain clustering pre-calculated (and batch corrected if needed):
+
+```bash
+sccaf -i <ann-data-input-file> --optimise --skip-assessment -s louvain -a 0.89 -c 8 --produce-rounds-summary
+```
+
+this will leave the result in new file named `output.h5`, which could be set via `-o`. In the current setting this will
+produce a file named `rounds.txt` with the name of all optimisation rounds left in the output. This file
+is used for later parallelisation (among different machines) of an assessment process to determine the step to choose
+as final clustering.
+
+To understand all options, simply execute `sccaf --help`.
+
+## Parallel run of assessments
+
+Once the optimisation has taken place, an strategy to choose the round to be used as final result is to observe the
+distribution of accuracies for each on multiple iterations of the assessment process. How the process is distributed is
+a matter of implementation of the local HPC or cloud system. Essentially, the process that can be repeated, per each round,
+is:
+
+```
+round=<name-of-the-round-in-the-output>
+sccaf-asses -i output.h5 -o results/sccaf_assess_$round.txt --slot-for-existing-clustering $round --iterations 20 --cores 8
+```
+
+running the above for a number of different rounds will leave files in the `results` folder.
+
+### Merging parallel runs to produce plot
+
+Once all assessment runs are done, the merging and plotting step can be run:
+
+```
+sccaf-assess-merger -i results -r rounds.txt -o rounds-acc-comparison-plot.png
+```
+
+This will produce a result like this:
+![plot](img/sccaf_assesment_accuracies.png)
