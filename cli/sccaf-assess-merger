@@ -29,7 +29,7 @@ rounds_df = pd.read_csv(args.rounds_file, header=None, names=['rounds'])
 df_merged = pd.DataFrame(columns=["Accuracy", "Type", "Round"])
 for asses_file in glob.glob("{}/sccaf_assess_*.txt".format(args.input_directory)):
     df = pd.read_csv(asses_file)
-    if rounds_df['rounds'].str.contains(df.columns.array[0]).any():
+    if rounds_df['rounds'].str.contains(df['Round'][0]).any():
         df_merged = df_merged.append(df, ignore_index=True)
 
 
