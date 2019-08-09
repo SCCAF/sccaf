@@ -35,8 +35,9 @@ parser.add_argument("-p", "--prefix",
                     help="Prefix for clustering labels", default="L1")
 parser.add_argument("-c", "--cores",
                     help="Number of processors to use", type=int, default=1)
-parser.add_argument("-v", "--optimise-version",
-                    help="Either 1 or 2 for v1 or v2", type=int, default=1)
+parser.add_argument("-u", "--undercluster-boundary",
+                    help="Label for the underclustering boundary to use in the optimisation. "
+                         "It should be present in the annData object", type=int, default=1)
 parser.add_argument("--produce-rounds-summary", action="store_true",
                     help="Set to produce summary files for each round of optimisation"
                     )
@@ -95,10 +96,11 @@ if args.optimise:
         # We use the predefined clustering (either internal or external).
         ad.obs['{}_Round0'.format(args.prefix)] = y
 
-    if args.optimise_version == 1:
-        sf.SCCAF_optimize_all(min_acc=args.min_accuracy, ad=ad, plot=False, n_jobs=args.cores)
+    if args.undercluster_boundary:
+        sf.SCCAF_optimize_all_V2(min_acc=args.min_accuracy, ad=ad, plot=False, n_jobs=args.cores,
+                                 undercluster_bound_label=args.undercluster_boundary)
     else:
-        sf.SCCAF_optimize_all_V2(min_acc=args.min_accuracy, ad=ad, plot=False, n_jobs=args.cores)
+        sf.SCCAF_optimize_all(min_acc=args.min_accuracy, ad=ad, plot=False, n_jobs=args.cores)
     logging.info("Run optimise: DONE")
     #sc.pl.scatter(ad, base=args.visualisation, color=)
     y_prob, y_pred, y_test, clf, cvsm, acc = sf.SCCAF_assessment(X, ad.obs['{}_result'.format(args.prefix)],
