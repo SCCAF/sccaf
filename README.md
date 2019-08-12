@@ -14,6 +14,16 @@ This package requirements vary depending on the way that you want to install it 
 - Docker container: to use SCCAF from its docker container you will need [Docker](https://docs.docker.com/install/) installed.
 - Source code: to use and install from the source code directly, you will need to have git, Python3 and pip. 
 
+The tool depends on other Python/conda packages, but these are automatically resolved by the different installation methods.
+
+The tool has been tested with the following versions:
+- conda: versions 4.7.5 and 4.7.10, but it should work with most other versions.
+- Docker: version 18.09.2, but should work with most other versions.
+- Python: versions 3.6.5 and 3.7. We don't expect this to work with Python 2.x.
+- Pip3: version 9.0.3, but any version of pip3 should work.
+
+This software doesn't require any non-standard hardware.
+
 # Installation
 
 ## pip
@@ -24,6 +34,8 @@ You can install SCCAF with pip:
 pip install sccaf
 ```
 
+Installation time on laptop with 16 GB of RAM and academic (LAN) internet connection: <10 minutes.
+
 ## Bioconda
 
 You can install SCCAF with bioconda (please setup conda and the bioconda channel if you haven't first, as explained [here](https://bioconda.github.io/user/index.html)):
@@ -31,6 +43,8 @@ You can install SCCAF with bioconda (please setup conda and the bioconda channel
 ```
 conda install sccaf
 ```
+
+Installation time on laptop with 16 GB of RAM and academic (LAN) internet connection: <5 minutes.
 
 ## Available as a container
 
@@ -40,7 +54,7 @@ You can use the SCCAF tool already setup on a Docker container. You need to choo
 docker pull quay.io/biocontainers/sccaf:<tag>
 ```
 
-Please not that Biocontainers containers do not have a latest tag, as such a docker pull/run without defining the tag will fail. For instance, a valid call would be (for version 0.0.3):
+**Note:** Biocontainer's containers do not have a latest tag, as such a docker pull/run without defining the tag will fail. For instance, a valid call would be (for version 0.0.3):
 
 ```
 docker run -it quay.io/biocontainers/sccaf:0.0.3--py_0
@@ -48,6 +62,7 @@ docker run -it quay.io/biocontainers/sccaf:0.0.3--py_0
 
 Inside the container, you can either use the Python interactive shell or the command line version (see below).
 
+Installation (pull) time on laptop with 16 GB of RAM and academic (LAN) internet connection: ~10 minutes.
 
 ## Use latest source code
 
@@ -61,6 +76,8 @@ pip3 install .
 ```
 
 if your python environment is configured for python 3, then you should be able to replace python3 for just python (although pip3 needs to be kept). In time this will be simplified by a simple pip call.
+
+Installation (pull) time on laptop with 16 GB of RAM and academic (LAN) internet connection: ~10 minutes.
 
 # Usage within Python environment
 
