@@ -1,3 +1,6 @@
+[![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/sccaf/README.html)
+
+
 # SCCAF: Single Cell Clustering Assessment Framework
 
 Single Cell Clustering Assessment Framework (SCCAF) is a novel method for automated identification of putative cell types from single cell RNA-seq (scRNA-seq) data. By iteratively applying clustering and a machine learning approach to gene expression profiles of a given set of cells, SCCAF simultaneously identifies distinct cell groups and a weighted list of feature genes for each group. The feature genes, which are overexpressed in the particular cell group, jointly discriminate the given cell group from other cells. Each such group of cells corresponds to a putative cell type or state, characterised by the feature genes as markers.
@@ -8,11 +11,40 @@ This package requires Python 3 and pip3 for installation, which will take care o
 
 # Installation
 
+## pip
+
 You can install SCCAF with pip:
 
 ```
 pip install sccaf
 ```
+
+## Bioconda
+
+You can install SCCAF with bioconda (please setup conda and the bioconda channel if you haven't first, as explained [here](https://bioconda.github.io/user/index.html)):
+
+```
+conda install sccaf
+```
+
+## Available as a container
+
+You can use the SCCAF tool already setup on a Docker container. You need to choose from the available tags [here](https://quay.io/repository/biocontainers/sccaf?tab=tags) and replace it in the call below where it says `<tag>`.
+
+```
+docker pull quay.io/biocontainers/sccaf:<tag>
+```
+
+Please not that Biocontainers containers do not have a latest tag, as such a docker pull/run without defining the tag will fail. For instance, a valid call would be (for version 0.0.3):
+
+```
+docker run -it quay.io/biocontainers/sccaf:0.0.3--py_0
+```
+
+Inside the container, you can either use the Python interactive shell or the command line version (see below).
+
+
+## Use latest source code
 
 Alternatively, for the latest version, clone this repo and go into its directory, then execute `pip3 install .`:
 
