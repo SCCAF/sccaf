@@ -20,15 +20,21 @@
 #
 
 import pandas as pd
+import numpy as np
+from scipy.sparse import issparse
+from pandas.api.types import is_categorical_dtype
 from collections import defaultdict
 import louvain
 import scipy
 import os
 import seaborn as sns
+import patsy
 
-import scanpy.api as sc
-# for clustering
-import scanpy
+#'from anndata import AnnData
+from scanpy import settings as sett
+from scanpy import logging as logg
+
+import scanpy as sc
 # for color
 from scanpy.plotting.palettes import *
 
@@ -46,6 +52,27 @@ from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier, VotingClassifier
 from sklearn.svm import SVC
+
+color_long = ['#e6194b',
+              '#3cb44b',
+              '#ffe119',
+              '#0082c8',
+              '#f58231',
+              '#911eb4',
+              '#46f0f0',
+              '#f032e6',
+              '#d2f53c',
+              '#fabebe',
+              '#008080',
+              '#e6beff',
+              '#aa6e28',
+              '#800000',
+              '#aaffc3',
+              '#808000',
+              '#ffd8b1',
+              '#000080',
+              '#808080',
+              '#000000', ] + default_26
 
 
 def run_BayesianGaussianMixture(Y, K):
@@ -99,50 +126,6 @@ def bhattacharyya_matrix(prob, flags=None):
 def binary_accuracy(X, y, clf):
     y_pred = clf.predict(X)
     return y == y_pred
-
-
-def run1(ad, key='random', basis='pca', n=0):
-    ad.obs[key] = ad.obs[key].astype("category")
-    if len(ad.obs[key].cat.categories) == 2:
-        ad.obs[key].cat.categories = ['A', 'B']
-
-    ax = sc.pl.scatter(ad, basis=basis, color=key, legend_fontsize=16, frameon=False)
-    if n > 0:
-        y_prob, y_pred, y_test, clf, cvsm, acc = SCCAF_assessment(ad.X, ad.obs[key], n=n)
-    else:
-        y_prob, y_pred, y_test, clf, cvsm, acc = SCCAF_assessment(ad.X, ad.obs[key])
-    aucs = plot_roc(y_prob, y_test, clf, cvsm=cvsm, acc=acc)
-    plt.show()
-
-    # confusion matrix
-    conf_mat = confusion_matrix(y_test, y_pred, clf)
-    norm_conf_mat = normalize_confmat1(conf_mat)
-    norm_conf_df = pd.DataFrame(norm_conf_mat, index=clf.classes_, columns=clf.classes_)
-    print(norm_conf_df)
-    ax = plot_link_scatter(ad, ymat=norm_conf_df, group=key, basis=basis, title='Conf Matrix')
-
-    # bhattacharyya_matrix
-    flags = (y_pred != y_test)
-    bhat_mat = bhattacharyya_matrix(y_prob, flags=flags)
-    if np.max(bhat_mat) > 0:
-        norm_bhat_mat = bhat_mat / np.max(bhat_mat)
-    else:
-        norm_bhat_mat = bhat_mat
-    norm_bhat_df = pd.DataFrame(norm_bhat_mat, index=clf.classes_, columns=clf.classes_)
-    print(norm_bhat_df)
-    ax = plot_link_scatter(ad, ymat=norm_bhat_df, group=key, basis=basis, title='Bhat Matrix')
-
-    # distance matrix
-    dist_mat = get_distance_matrix(ad.X, ad.obs[key], labels=clf.classes_)
-    dist_mat = 1 / (dist_mat + 0.01)
-    np.fill_diagonal(dist_mat, 0)
-    norm_dist_mat = dist_mat / np.max(dist_mat)
-    norm_dist_df = pd.DataFrame(norm_dist_mat, index=clf.classes_, columns=clf.classes_)
-    print(norm_dist_df)
-    ax = plot_link_scatter(ad, ymat=norm_dist_df, group=key, basis=basis, title='Distance Matrix')
-
-    df = pd.DataFrame(y_prob, index=y_test, columns=clf.classes_)
-    return df
 
 
 def normalize_confmat1(cmat, mod='1'):
@@ -215,7 +198,7 @@ def cluster_adjmat(xmat,
     -----
     new group names.
     """
-    g = scanpy.utils.get_igraph_from_adjacency((xmat > cutoff).astype(int), directed=False)
+    g = sc.utils.get_igraph_from_adjacency((xmat > cutoff).astype(int), directed=False)
     print(g)
     part = louvain.find_partition(g, louvain.RBConfigurationVertexPartition,
                                   resolution_parameter=resolution)
@@ -283,7 +266,8 @@ def SCCAF_assessment(*args, **kwargs):
 
 
 # need to check number of cells in each cluster of the training set.
-def self_projection(X, cell_types,
+def self_projection(X, 
+                    cell_types,
                     classifier="LR",
                     penalty='l1',
                     sparsity=0.5,
@@ -291,7 +275,8 @@ def self_projection(X, cell_types,
                     random_state=1,
                     n=0,
                     cv=5,
-                    whole=False, n_jobs=None):
+                    whole=False, 
+                    n_jobs=None):
     # n = 100 should be good.
     """
     This is the core function for running self-projection.
@@ -335,6 +320,7 @@ def self_projection(X, cell_types,
         real clustering of the test set
     clf: the classifier model.
     """
+    # split the data into training and testing
     if n > 0:
         X_train, X_test, y_train, y_test = \
             train_test_split_per_type(X, cell_types, n=n, frac=(1 - fraction))
@@ -342,7 +328,7 @@ def self_projection(X, cell_types,
         X_train, X_test, y_train, y_test = \
             train_test_split(X, cell_types,
                              stratify=cell_types, test_size=fraction)  # fraction means test size
-
+    # set the classifier
     if classifier == 'LR':
         clf = LogisticRegression(random_state=1, penalty=penalty, C=sparsity, n_jobs=n_jobs)
     elif classifier == 'RF':
@@ -359,25 +345,31 @@ def self_projection(X, cell_types,
         clf = SGDClassifier(loss='perceptron', n_jobs=n_jobs)
     elif classifier == 'DT':
         clf = DecisionTreeClassifier()
+    
+    # mean cross validation score
     cvsm = 0
     if cv > 0:
         cvs = cross_val_score(clf, X_train, np.array(y_train), cv=cv, scoring='accuracy', n_jobs=n_jobs)
         cvsm = cvs.mean()
         print("Mean CV accuracy: %.4f" % cvsm)
-
+    # accuracy on cross validation and on test set
     clf.fit(X_train, y_train)
     accuracy = clf.score(X_train, y_train)
     print("Accuracy on the training set: %.4f" % accuracy)
     accuracy_test = clf.score(X_test, y_test)
     print("Accuracy on the hold-out set: %.4f" % accuracy_test)
+    
+    # accuracy of the whole dataset
     if whole:
         accuracy = clf.score(X, cell_types)
         print("Accuracy on the whole set: %.4f" % accuracy)
-
+    
+    # get predicted probability on the test set
     y_prob = None
     if not classifier in ['SH', 'PCP']:
         y_prob = clf.predict_proba(X_test)
     y_pred = clf.predict(X_test)
+    
     return y_prob, y_pred, y_test, clf, cvsm, accuracy_test
 
 
@@ -464,75 +456,6 @@ def per_cell_accuracy(X, cell_types, clf):
     return dy/np.max(df.values, 0)
 
 
-def xmat2ymat(xmat, cmat, std=False):
-    xmat[xmat == np.inf] = 0
-    xmat = np.nan_to_num(xmat)
-    x = xmat.flatten()
-    x = x[x > 0]
-    if std:
-        ymat = xmat - np.mean(x) + np.std(x) / 3
-    else:
-        ymat = xmat - np.mean(x)
-    ymat[ymat < 0] = 0
-    ymat = ymat / np.max(ymat)
-    ymat = pd.DataFrame(ymat, columns=cmat.columns, index=cmat.index)
-    return ymat
-
-
-def plot_link(ad, ymat, old_id, basis='tsne', ax=None, line_color='#ffa500', line_weight=10, plot_name=False,
-              legend_fontsize=12):
-    centroids = {}
-    Y = ad.obsm['X_%s' % basis]
-
-    for c in ad.obs[old_id].cat.categories:
-        Y_mask = Y[ad.obs[old_id] == c, :]
-        centroids[c] = np.median(Y_mask, axis=0)
-    if plot_name:
-        for c in centroids.keys():
-            ax.text(centroids[c][0], centroids[c][1], c,
-                    verticalalignment='center',
-                    horizontalalignment='center',
-                    fontsize=legend_fontsize)
-    # 'for i in ymat.index:
-    # 'for j in ymat.columns:
-    # 'val = ymat.loc[i][j]
-    # 'if val >0:
-    # 'ax.plot([centroids[i][0],centroids[j][0]],[centroids[i][1],centroids[j][1]],\
-    # 'linewidth=val*line_weight, color=line_color)
-    df = ymat.copy()
-    df = df.where(np.triu(np.ones(df.shape)).astype(np.bool))
-    df = df.stack().reset_index()
-    df.columns = ['i', 'j', 'val']
-    for k in np.arange(df.shape[0]):
-        val = df.iloc[k]['val']
-        if df.iloc[k]['val'] > 0:
-            i = df.iloc[k]['i']
-            j = df.iloc[k]['j']
-            ax.plot([centroids[i][0], centroids[j][0]], [centroids[i][1], centroids[j][1]],
-                    linewidth=val * line_weight, color=line_color)
-    return ax
-
-
-def plot_center(ad, groupby, ax, basis='tsne', size=20):
-    centroids = {}
-    Y = ad.obsm['X_%s' % basis]
-
-    for c in ad.obs[groupby].cat.categories:
-        Y_mask = Y[ad.obs[groupby] == c, :]
-        centroids[c] = np.median(Y_mask, axis=0)
-    for c in centroids.keys():
-        ax.plot(centroids[c][0], centroids[c][1], 'wo', markersize=size, alpha=0.5)
-    return ax
-
-
-def plot_link_scatter(ad, ymat, basis='pca', group='cell', title=''):
-    fig, ax = plt.subplots()
-    ax = plot_link(ad, ymat=ymat, old_id=group, basis=basis, ax=ax)
-    sc.pl.scatter(ad, basis=basis, color=[group], color_map="RdYlBu_r", legend_loc='on data',
-                  ax=ax, legend_fontsize=20, frameon=False, title=title)
-    return ax
-
-
 def get_topmarkers(clf, names, topn=10):
     """
     Get the top weighted features from the logistic regressioin model.
@@ -563,112 +486,6 @@ def get_topmarkers(clf, names, topn=10):
             .head(topn) \
             .sort_values(['cell_type', 'weight'], ascending=[True, False])
     return top_markers
-
-
-def plot_markers(top_markers, topn=10, save=None):
-    """
-    Plot the top marker genes as a figure.
-
-    Input
-    -----
-    top_markers: `pandas dataframe`
-        top weighted featured in a machine learning model.
-    topn: `int`
-        number of features to be plotted.
-    save: `str` or None.
-        Save as a figure or not. String is the save file name.
-
-    return
-    -----
-    None
-    """
-    n_types = len(top_markers.cell_type.unique())
-    nrow = int(np.floor(np.sqrt(n_types)))
-    ncol = int(np.ceil(n_types / nrow))
-    for i, m in enumerate(top_markers.cell_type.unique()):
-        plt.subplot(nrow, ncol, i + 1)
-        g = top_markers.query('cell_type == @m')
-        plt.title(m, size=12, weight='bold')
-        for j, gn in enumerate(g.gene):
-            plt.annotate(gn, (0, 0.2 * j))
-        plt.axis('off')
-        plt.ylim(topn * 0.2, -0.2)
-    plt.tight_layout()
-    if save:
-        plt.savefig(save)
-    else:
-        plt.show()
-
-
-def plot_markers_scatter(ad, genes, groupby='louvain', save=None):
-    """
-    Not in use.
-    """
-    ad.obs['idx'] = range(ad.shape[0])
-    ad.raw.var['idx'] = range(ad.raw.X.shape[1])
-    c_idx = ad.obs.sort_values(by=groupby).idx
-    g_idx = ad.raw.var.loc[genes].idx
-
-    X1 = ad.raw.X[:, g_idx]
-
-    df1 = pd.DataFrame(X1.todense(), index=ad.obs[groupby])
-    df2 = pd.DataFrame((X1 > 0).todense(), index=ad.obs[groupby])
-    df3 = pd.DataFrame(np.ones((X1.shape[0], 1)), index=ad.obs[groupby])
-
-    df1 = df1.groupby(df1.index).sum()
-    df2 = df2.groupby(df2.index).sum()
-    df3 = df3.groupby(df3.index).sum()
-
-    df1 = df1.divide(df3[0], axis=0)
-    df2 = df2.divide(df3[0], axis=0)
-
-    dfm1 = df1.max(0)
-    dfm2 = df2.max(0)
-
-    dfx1 = df1.divide(dfm1, axis=1)
-    dfx2 = df2.divide(dfm2, axis=1)
-
-    dfx1 = dfx1.stack().reset_index()
-    dfx2 = dfx2.stack().reset_index()
-
-    dfx1[1] = dfx2[0]
-
-    dfx1.columns = [0, 1, 2, 3]
-
-    rcParams.update({'font.size': 12})
-    plt.scatter(dfx1[1], dfx1[0], c=dfx1[2], s=dfx1[3] * 150., marker='o')
-    plt.xticks(range(len(genes)), genes, rotation=90)
-    plt.xlabel("Genes", fontsize=22)
-    plt.ylabel("Clusters", fontsize=22)
-    plt.xlim([-1, len(genes)])
-
-    if save:
-        plt.savefig(save)
-    else:
-        plt.show()
-
-
-# 'sizes = ad.obs.sort_values(by='cell').value_counts()
-# 'ad.obs['idx'] = range(ad.shape[0])
-# 'ad.var['idx'] = range(ad.shape[1])
-# 'c_idx = ad.obs.sort_values(by='cell').idx
-# 'g_idx = ad.var.loc[genes].idx
-def DoHeatmap(X, c_idx, g_idx, sizes=None, cmap='gray_r'):
-    """
-    Not in use.
-    """
-    X1 = X[c_idx, :]
-    X1 = X1[:, g_idx]
-
-    plt.pcolormesh(X1.T, cmap=cmap)
-    plt.colorbar()
-    plt.xlabel("Cells")
-    plt.ylabel("Genes")
-
-    if not sizes is None:
-        for vl in sizes.cumsum():
-            plt.axvline(vl, lw=1, c='r')
-
 
 def eu_distance(X, gp1, gp2, cell):
     """
@@ -703,45 +520,6 @@ def eu_distance(X, gp1, gp2, cell):
     return df
 
 
-def plot_distance_jitter(df):
-    ax = sns.stripplot(x="type", y="distance", data=df, jitter=True)
-
-
-def sc_pl_scatter(ad, basis='tsne', color='cell'):
-    df = pd.DataFrame(ad.obsm['X_%s' % basis])
-    df.columns = ['%s%d' % (basis, i + 1) for i in range(df.shape[1])]
-    df[color] = ad.obs[color].tolist()
-    df[color] = df[color].astype('category')
-    df[color].cat.categories = ad.obs[color].cat.categories
-    sns.lmplot('%s1' % basis,  # Horizontal axis
-               '%s2' % basis,  # Vertical axis
-               data=df,  # Data source
-               fit_reg=False,  # Don't fix a regression line
-               hue=color,  # Set color
-               scatter_kws={"marker": "o",  # Set marker style
-                            "s": 10}, palette=default_20)
-    return df
-
-
-def sc_workflow(ad, prefix='L1', resolution=1.5, n_pcs=15, do_tsne=True):
-    sc.pp.normalize_per_cell(ad, counts_per_cell_after=1e4)
-    filter_result = sc.pp.filter_genes_dispersion(
-        ad.X, min_mean=0.0125, max_mean=10, min_disp=0.25)
-    sc.pl.filter_genes_dispersion(filter_result)
-    print("n_HVGs: %d" % sum(filter_result.gene_subset))
-    ad = ad[:, filter_result.gene_subset]
-    sc.pp.log1p(ad)
-    sc.pp.scale(ad, max_value=10)
-    sc.tl.pca(ad)
-    if do_tsne:
-        sc.tl.tsne(ad, n_pcs=n_pcs, random_state=2)
-    sc.pp.neighbors(ad, n_neighbors=10, n_pcs=n_pcs)
-    sc.tl.umap(ad)
-    sc.tl.louvain(ad, resolution=resolution)
-    ad.obs["%s_res%.f" % (prefix, resolution)] = ad.obs["louvain"]
-    return ad
-
-
 def get_distance_matrix(X, clusters, labels=None, metric='euclidean'):
     """
     Get the mean distance matrix between all clusters.
@@ -773,108 +551,60 @@ def get_distance_matrix(X, clusters, labels=None, metric='euclidean'):
             centers.append(np.array(X[np.where(clusters == cl)[0], :].mean(0)))
     return pairwise_distances(np.array(centers), metric=metric)
 
-
-def get_z_matrix(ad, id):
-    x = ad.obs.groupby(['L1_result', id]).count()
-    x = x[~x['n_genes'].isna()]
-    x.reset_index(inplace=True)
-    y = x[['L1_result', id]]
-    ln = len(ad.obs[id].unique())
-    z = np.zeros([ln, ln])
-    for i in y['L1_result'].unique():
-        yi = y[y.L1_result == i][id].tolist()
-        if len(yi) > 1:
-            for j in range(len(yi)):
-                jj = int(yi[j])
-                for k in range(j + 1, len(yi)):
-                    kk = int(yi[k])
-                    z[jj, kk] = z[kk, jj] = 1
-    return z
-
-
-def test_distance(ad):
-    prefix = 'L1'
-    use_raw = True
-    plot = True
-    c_iter = 3
-    n_iter = 3
-    iter_start = 0
-    sparsity = 0.5
-    n = 100
-    fraction = 0.5
-    cutoff = 0.1
-    classifier = "LR"
-    for i in range(iter_start, iter_start + n_iter):
-        print("Round%d ..." % (i + 1))
-        old_id = '%s_Round%d' % (prefix, i)
-        new_id = '%s_Round%d' % (prefix, i + 1)
-
-        X = None
-        if use_raw:
-            X = ad.raw.X
-        else:
-            X = ad.X
-
-        y_prob, y_pred, y_test, clf = self_projection(X, ad.obs[old_id], sparsity=sparsity, n=n, fraction=fraction,
-                                                      classifier=classifier)
-
-        cmat = confusion_matrix(y_test, y_pred, clf, labels=np.sort(clf.classes_.astype(int)).astype(str))
-        xmat = normalize_confmat1(cmat)
-        xmats = [xmat]
-        cmats = [np.array(cmat)]
-
-        for j in range(c_iter - 1):
-            y_prob, y_pred, y_test, clf = self_projection(X, ad.obs[old_id], sparsity=sparsity, n=n, fraction=fraction,
-                                                          classifier=classifier, cv=0)
-            cmat = confusion_matrix(y_test, y_pred, clf, labels=np.sort(clf.classes_.astype(int)).astype(str))
-            xmat = normalize_confmat1(cmat)
-            xmats.append(xmat)
-            cmats.append(np.array(cmat))
-        ymat = np.minimum.reduce(xmats)
-        dmat = np.minimum.reduce(cmats)
-
-        emat = np.copy(dmat)
-        np.fill_diagonal(emat, 0)
-        emat = emat * 1.0 / ad.shape[0]
-
-        fmat = get_distance_matrix(X, ad.obs[old_id], labels=np.sort(clf.classes_.astype(int)).astype(str))
-
-        plt.clf()
-        zmat = get_z_matrix(ad, old_id)
-        print(fmat.shape)
-        print(zmat.shape)
-        xx = np.triu(fmat).flatten()
-        yy = np.triu(ymat).flatten()
-        zz = np.triu(zmat).flatten()
-
-        plt.scatter(xx, yy, c=zz)
-        plt.xlabel('distance')
-        plt.ylabel('confusion')
-        plt.show()
+def merge_cluster(ad, old_id, new_id, groups):
+    ad.obs[new_id] = ad.obs[old_id]
+    ad.obs[new_id] = ad.obs[new_id].astype('category')
+    ad.obs[new_id].cat.categories = make_unique(groups.astype(str))
+    ad.obs[new_id] = ad.obs[new_id].str.split('_').str[0]
+    return ad
+    
+    
+def find_high_resolution(ad, resolution=4, n=100):
+    cut = resolution
+    while cut > 0.5:
+        print("clustering with resolution: %.1f" % cut)
+        sc.tl.leiden(ad, resolution=cut)
+        ad.obs['leiden_res%.1f' % cut] = ad.obs['leiden']
+        if ad.obs['leiden'].value_counts().min() > n:
+            break
+        cut -= 0.5
 
 
-def plot_heatmap_gray(X, title='', save=None):
-    plt.clf()
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    cax = ax.pcolormesh(X, cmap=cm.gray_r)
-    ax.set_title(title)
-    # 'ax.set_xticks([])
-    # 'ax.set_yticks([])
-    cbaxes = fig.add_axes([1, 0.125, 0.08, 0.76])
-    # 'cb = fig.colorbar(cax, cax = cbaxes, ticks=[])
-    cb = fig.colorbar(cax, cax=cbaxes)
-    if save:
-        plt.savefig(save)
-    else:
-        plt.show()
+def get_connection_matrix(ad_obs, key1, key2):
+    df = ad_obs.groupby([key1,key2]).size().to_frame().reset_index()
+    df.columns = [key1,key2,'counts']
+    df2 = ad_obs[key2].value_counts()
+    df['size'] = df2[df[key2].tolist()].tolist()
+    df['percent'] = df['counts']/df['size']
+    df = df[df['percent']>0.1]
+    df2 = df.groupby(key1).size()
+    df2 = df2[df2>1]
+    df = df[df[key1].isin(df2.index)]
+
+    dim = len(ad_obs[key2].unique())
+    mat = pd.DataFrame(np.zeros([dim,dim])).astype(int)
+    mat.columns = mat.columns.astype(str)
+    mat.index = mat.index.astype(str)
+
+    import itertools
+    grouped = df.groupby(key1)
+    for name, group in grouped:
+        x = group[key2]
+        if len(x)>0:
+            for i,j in list(itertools.combinations(x.tolist(), 2)):
+                mat.loc[i,j] = mat.loc[j,i] = 1
+    return mat    
 
 
-def SCCAF_optimize_all(min_acc=0.9,
+def SCCAF_optimize_all(ad,
+                       min_acc=0.9,
                        R1norm_cutoff=0.5,
                        R2norm_cutoff=0.05,
                        R1norm_step=0.01,
-                       R2norm_step=0.001, *args, **kwargs):
+                       R2norm_step=0.001, 
+                       prefix='L1',
+                       min_i = 3,
+                       *args, **kwargs):
     """
     ad: `AnnData`
         The AnnData object of the expression profile.
@@ -899,23 +629,38 @@ def SCCAF_optimize_all(min_acc=0.9,
     """
     acc = 0
     start_iter = 0
-    while acc < min_acc:
+    
+    clstr_old = len(ad.obs['%s_Round%d'%(prefix, start_iter)].unique())
+    #'while acc < min_acc:
+    for i in range(10):
         print("start_iter: %d" % start_iter)
         print("R1norm_cutoff: %f" % R1norm_cutoff)
         print("R2norm_cutoff: %f" % R2norm_cutoff)
         print("Accuracy: %f" % acc)
         print("======================")
-        ad, m1, m2, acc, start_iter = SCCAF_optimize(R1norm_cutoff=R1norm_cutoff,
+        ad, m1, m2, acc, start_iter = SCCAF_optimize(ad=ad,
+                                                     R1norm_cutoff=R1norm_cutoff,
                                                      R2norm_cutoff=R2norm_cutoff,
                                                      start_iter=start_iter,
-                                                     min_acc=min_acc, *args, **kwargs)
+                                                     min_acc=min_acc, 
+                                                     prefix=prefix,
+                                                     *args, **kwargs)
         print("m1: %f" % m1)
         print("m2: %f" % m2)
         print("Accuracy: %f" % acc)
         R1norm_cutoff = m1 - R1norm_step
         R2norm_cutoff = m2 - R2norm_step
-
-
+        
+        clstr_new = len(ad.obs['%s_result'%prefix].unique())
+        
+        if clstr_new >= clstr_old and i >= min_i:
+            print("converged SCCAF_all!")
+            break
+        
+        if acc >=min_acc:
+            break
+            
+            
 def SCCAF_optimize(ad,
                    prefix='L1',
                    use='raw',
@@ -929,6 +674,7 @@ def SCCAF_optimize(ad,
                    plot_dist=False,
                    plot_cmat=False,
                    mod='1',
+                   low_res = None,
                    c_iter=3,
                    n_iter=10,
                    n_jobs=None,
@@ -939,7 +685,8 @@ def SCCAF_optimize(ad,
                    R1norm_cutoff=0.1,
                    R2norm_cutoff=1,
                    dist_cutoff=8,
-                   classifier="LR", min_acc=1):
+                   classifier="LR", 
+                   min_acc=1):
     """
     This is a self-projection confusion matrix directed cluster optimization function.
 
@@ -1001,16 +748,21 @@ def SCCAF_optimize(ad,
     dist_cutoff: `float` optional (default: 8.0)
         The cutoff for the euclidean distance between two clusters of cells.
         8.0 means the euclidean distance between two cell types should be greater than 8.0.
+    low_res: `str` optional
+		the clustering boundary for under-clustering. Set a low resolution in louvain/leiden clustering and give
+		the key as the underclustering boundary.
     classifier: `String` optional (default: 'LR')
         a machine learning model in "LR" (logistic regression), \
         "RF" (Random Forest), "GNB"(Gaussion Naive Bayes), "SVM" (Support Vector Machine) and "DT"(Decision Tree).
+    min_acc: `float`
+		the minimum total accuracy to be achieved. Above this threshold, the optimization will stop.
 
     return
     -----
     The modified anndata object, with a slot "%s_result"%prefix
         assigned as the clustering optimization results.
     """
-
+    # the space to use
     X = None
     if use == 'raw':
         X = ad.raw.X
@@ -1019,7 +771,7 @@ def SCCAF_optimize(ad,
             raise ValueError("`adata.obsm['X_pca']` doesn't exist. Run `sc.pp.pca` first.")
         X = ad.obsm['X_pca']
     else:
-        X = ad.X
+        X = ad[:,ad.var['highly_variable']].X
 
     for i in range(start_iter, start_iter + n_iter):
         print("Round%d ..." % (i + 1))
@@ -1027,21 +779,20 @@ def SCCAF_optimize(ad,
         new_id = '%s_Round%d' % (prefix, i + 1)
 
         labels = np.sort(ad.obs[old_id].unique().astype(int)).astype(str)
-        # 'labels = np.sort(ad.obs[old_id].unique()).astype(str)
 
         # optimize
         y_prob, y_pred, y_test, clf, cvsm, acc = \
             self_projection(X, ad.obs[old_id], sparsity=sparsity, n=n,
                             fraction=fraction, classifier=classifier, n_jobs=n_jobs)
         accs = [acc]
+        ad.obs['%s_self-projection' % old_id] = clf.predict(X)
+        
         if plot:
             aucs = plot_roc(y_prob, y_test, clf, cvsm=cvsm, acc=acc)
             plt.show()
 
-        ad.obs['%s_self-projection' % old_id] = clf.predict(X)
-        if plot:
-            sc.pl.scatter(ad, basis=basis, color=['%s_self-projection' % old_id], color_map="RdYlBu_r",
-                          legend_loc='on data')
+            sc.pl.scatter(ad, basis=basis, color=['%s_self-projection' % old_id], \
+                          color_map="RdYlBu_r", legend_loc='on data', frameon=False)
 
         cmat = confusion_matrix(y_test, y_pred, clf, labels=labels)
         xmat = normalize_confmat1(cmat, mod)
@@ -1060,23 +811,18 @@ def SCCAF_optimize(ad,
             cmats.append(np.array(cmat))
         R1mat = np.minimum.reduce(xmats)
         R2mat = normalize_confmat2(np.minimum.reduce(cmats))
-        # 'cmat = np.minimum.reduce(cmats)
 
         m1 = np.max(R1mat)
-        if np.isnan(m1):
-            m1 = 1.
+        if np.isnan(m1): m1 = 1.
         m2 = np.max(R2mat)
         print("Max R1mat: %f" % m1)
         print("Max R2mat: %f" % m2)
 
         if np.min(accs) > min_acc:
-            # 'print(old_id)
             ad.obs['%s_result' % prefix] = ad.obs[old_id]
-            print("Converge1!")
+            print("Converge SCCAF_optimize min_acc!")
             break
-
-        dmat1 = get_distance_matrix(X, ad.obs[old_id1], labels=labels)  ##
-        dmat2 = get_distance_matrix(X, ad.obs[old_id1], labels=labels, metric='correlation')
+        print("min_acc: %f"%np.min(accs))
 
         if plot:
             if plot_cmat:
@@ -1084,100 +830,158 @@ def SCCAF_optimize(ad,
             plot_heatmap_gray(R1mat, 'Normalized Confusion Matrix (R1norm)')
             plot_heatmap_gray(R2mat, 'Normalized Confusion Matrix (R2norm)')
 
-            if plot_dist:
-                plot_heatmap_gray(dmat1, 'distance Matrix(euclidean)')
-                plot_heatmap_gray(dmat2, 'distance Matrix(correlation)')
-
-                plt.clf()
-                xx1 = np.triu(np.clip(dmat1, a_min=0, a_max=20)).flatten()
-                xx2 = np.triu(dmat2).flatten()
-                yy = np.triu(R1mat).flatten()
-                plt.scatter(xx1, yy, c='r')
-                plt.scatter(xx2, yy, c='g')
-                plt.xlabel('distance')
-                plt.ylabel('confusion')
-                plt.show()
-        if dist_not:
-            zmat = np.maximum.reduce([(R1mat > R1norm_cutoff), (R2mat > R2norm_cutoff)])
-        else:
-            zmat = np.maximum.reduce(
-                [np.minimum.reduce([(R1mat > R1norm_cutoff), (dmat1 < dist_cutoff)]), (R2mat > R2norm_cutoff)])
-
         if R1norm_only:
             groups = cluster_adjmat(R1mat, cutoff=R1norm_cutoff)
         elif R2norm_only:
             groups = cluster_adjmat(R2mat, cutoff=R2norm_cutoff)
-        elif dist_only:
-            groups = cluster_adjmat(-dmat1, cutoff=-dist_cutoff)
         else:
-            groups = cluster_adjmat(zmat, cutoff=0)
+            if not low_res is None:
+                conn_mat = get_connection_matrix(ad_obs = ad.obs, key1 = low_res, key2 = old_id)
+                zmat = np.minimum.reduce([(R1mat > R1norm_cutoff), conn_mat.values])
+                groups = cluster_adjmat(zmat, cutoff=0)
+            else:
+                zmat = np.maximum.reduce([(R1mat > R1norm_cutoff), (R2mat > R2norm_cutoff)])
+                groups = cluster_adjmat(zmat, cutoff=0)
 
         if len(np.unique(groups)) == len(ad.obs[old_id].unique()):
             ad.obs['%s_result' % prefix] = ad.obs[old_id]
-            print("Converged!")
+            print("Converge SCCAF_optimize no. cluster!")
             break
+        
         merge_cluster(ad, old_id1, new_id, groups)
+        
         if plot:
             sc.pl.scatter(ad, basis=basis, color=[new_id], color_map="RdYlBu_r", legend_loc='on data')
+        
         if len(np.unique(groups)) <= 1:
             ad.obs['%s_result' % prefix] = ad.obs[new_id]
             print("no clustering!")
             break
+    
     return ad, m1, m2, np.min(accs), i
 
 
-def optimize_L2(ad,
-                ad_raw,
-                savepath='ICA/BM',
-                prefix1='L1',
-                prefix2='L2',
-                c_iter=3,
-                R1norm_cutoff=0.15,
-                dist_cutoff=100,
-                R2norm_cutoff=1.,
-                plot=True,
-                classifier='LR',
-                use='pca'):
-    ad.obs['Level2'] = 'unknown'
-    ad1 = ''
-    for cl in ad.obs['%s_result' % prefix1].cat.categories:
-        if os.path.isfile("%s/%s.h5" % (savepath, cl)):
-            ad1 = sc.read("%s/%s.h5" % (savepath, cl))
-            ad.obs.set_value(ad1.obs_names, 'Level2', ad1.obs['%s_result' % prefix2].tolist())
-            continue
-        print("cluster: %s" % cl)
-        ad1 = SubsetData(ad, ad.obs['%s_result' % prefix1] == cl, ad_raw)
+######################## PLOT FUNCTIONS ################################
 
-        ad1 = sc_workflow(ad1, prefix=prefix2)
-        if ad1.obs['louvain'].value_counts().min() < 5:
-            for i in range(10):
-                sc.tl.louvain(ad1, resolution=(1.4 - i * 0.1))
-                if ad1.obs['louvain'].value_counts().min() >= 10:
-                    break
+def plot_link(ad, ymat, old_id, basis='tsne', ax=None, line_color='#ffa500', line_weight=10, plot_name=False,
+              legend_fontsize=12):
+    centroids = {}
+    Y = ad.obsm['X_%s' % basis]
 
-        if plot:
-            sc.pl.pca_variance_ratio(ad1, log=True)
-            sc.pl.umap(ad1, color=['louvain'], legend_loc='on data')
+    for c in ad.obs[old_id].cat.categories:
+        Y_mask = Y[ad.obs[old_id] == c, :]
+        centroids[c] = np.median(Y_mask, axis=0)
+    if plot_name:
+        for c in centroids.keys():
+            ax.text(centroids[c][0], centroids[c][1], c,
+                    verticalalignment='center',
+                    horizontalalignment='center',
+                    fontsize=legend_fontsize)
 
-        ad1.obs["%s_Round0" % prefix2] = ad1.obs["louvain"]
-
-        SCCAF_optimize(ad1, use=use, prefix=prefix2, c_iter=c_iter, plot=plot,
-                       classifier=classifier, R1norm_cutoff=R1norm_cutoff, dist_cutoff=dist_cutoff,
-                       R2norm_cutoff=R2norm_cutoff)
-
-        ad1.write("%s/%s.h5" % (savepath, cl))
-        ad.obs.set_value(ad1.obs_names, 'Level2', ad1.obs['%s_result' % prefix2].tolist())
-    return ad
+    df = ymat.copy()
+    df = df.where(np.triu(np.ones(df.shape)).astype(np.bool))
+    df = df.stack().reset_index()
+    df.columns = ['i', 'j', 'val']
+    for k in np.arange(df.shape[0]):
+        val = df.iloc[k]['val']
+        if df.iloc[k]['val'] > 0:
+            i = df.iloc[k]['i']
+            j = df.iloc[k]['j']
+            ax.plot([centroids[i][0], centroids[j][0]], [centroids[i][1], centroids[j][1]],
+                    linewidth=val * line_weight, color=line_color)
+    return ax
 
 
-# For plot
-def merge_cluster(ad, old_id, new_id, groups):
-    ad.obs[new_id] = ad.obs[old_id]
-    ad.obs[new_id] = ad.obs[new_id].astype('category')
-    ad.obs[new_id].cat.categories = make_unique(groups.astype(str))
-    ad.obs[new_id] = ad.obs[new_id].str.split('_').str[0]
-    # 'ad.obs[new_id] = ad.obs[new_id].astype(str)
-    return ad
+def plot_center(ad, groupby, ax, basis='tsne', size=20):
+    centroids = {}
+    Y = ad.obsm['X_%s' % basis]
+
+    for c in ad.obs[groupby].cat.categories:
+        Y_mask = Y[ad.obs[groupby] == c, :]
+        centroids[c] = np.median(Y_mask, axis=0)
+    for c in centroids.keys():
+        ax.plot(centroids[c][0], centroids[c][1], 'wo', markersize=size, alpha=0.5)
+    return ax
+
+
+def plot_link_scatter(ad, ymat, basis='pca', group='cell', title=''):
+    fig, ax = plt.subplots()
+    ax = plot_link(ad, ymat=ymat, old_id=group, basis=basis, ax=ax)
+    sc.pl.scatter(ad, basis=basis, color=[group], color_map="RdYlBu_r", legend_loc='on data',
+                  ax=ax, legend_fontsize=20, frameon=False, title=title)
+    return ax
+
+
+def plot_markers(top_markers, topn=10, save=None):
+    """
+    Plot the top marker genes as a figure.
+
+    Input
+    -----
+    top_markers: `pandas dataframe`
+        top weighted featured in a machine learning model.
+    topn: `int`
+        number of features to be plotted.
+    save: `str` or None.
+        Save as a figure or not. String is the save file name.
+
+    return
+    -----
+    None
+    """
+    n_types = len(top_markers.cell_type.unique())
+    nrow = int(np.floor(np.sqrt(n_types)))
+    ncol = int(np.ceil(n_types / nrow))
+    for i, m in enumerate(top_markers.cell_type.unique()):
+        plt.subplot(nrow, ncol, i + 1)
+        g = top_markers.query('cell_type == @m')
+        plt.title(m, size=12, weight='bold')
+        for j, gn in enumerate(g.gene):
+            plt.annotate(gn, (0, 0.2 * j))
+        plt.axis('off')
+        plt.ylim(topn * 0.2, -0.2)
+    plt.tight_layout()
+    if save:
+        plt.savefig(save)
+    else:
+        plt.show()
+
+
+def plot_distance_jitter(df):
+    ax = sns.stripplot(x="type", y="distance", data=df, jitter=True)
+
+
+def sc_pl_scatter(ad, basis='tsne', color='cell'):
+    df = pd.DataFrame(ad.obsm['X_%s' % basis])
+    df.columns = ['%s%d' % (basis, i + 1) for i in range(df.shape[1])]
+    df[color] = ad.obs[color].tolist()
+    df[color] = df[color].astype('category')
+    df[color].cat.categories = ad.obs[color].cat.categories
+    sns.lmplot('%s1' % basis,  # Horizontal axis
+               '%s2' % basis,  # Vertical axis
+               data=df,  # Data source
+               fit_reg=False,  # Don't fix a regression line
+               hue=color,  # Set color
+               scatter_kws={"marker": "o",  # Set marker style
+                            "s": 10}, palette=default_20)
+    return df
+
+
+def plot_heatmap_gray(X, title='', save=None):
+    plt.clf()
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    cax = ax.pcolormesh(X, cmap=cm.gray_r)
+    ax.set_title(title)
+    # 'ax.set_xticks([])
+    # 'ax.set_yticks([])
+    cbaxes = fig.add_axes([1, 0.125, 0.08, 0.76])
+    # 'cb = fig.colorbar(cax, cax = cbaxes, ticks=[])
+    cb = fig.colorbar(cax, cax=cbaxes)
+    if save:
+        plt.savefig(save)
+    else:
+        plt.show()
 
 
 def plot_roc(y_prob, y_test, clf, plot=True, save=None, title='', colors=None, cvsm=None, acc=None, fontsize=16):
@@ -1222,7 +1026,7 @@ def plot_roc(y_prob, y_test, clf, plot=True, save=None, title='', colors=None, c
     return aucs
 
 
-########################################################################
+## pySankey
 
 class pySankeyException(Exception):
     pass
@@ -1439,35 +1243,41 @@ def sankey(left, right, leftWeight=None, rightWeight=None, colorDict=None,
         plt.close()
 
 
-color_long = ['#e6194b',
-              '#3cb44b',
-              '#ffe119',
-              '#0082c8',
-              '#f58231',
-              '#911eb4',
-              '#46f0f0',
-              '#f032e6',
-              '#d2f53c',
-              '#fabebe',
-              '#008080',
-              '#e6beff',
-              '#aa6e28',
-              '#800000',
-              '#aaffc3',
-              '#808000',
-              '#ffd8b1',
-              '#000080',
-              '#808080',
-              '#000000', ] + default_26
+############################ UTILS #####################################
+from scipy.sparse import csr_matrix
+import h5py
 
-# optimize the regress out function
-import numpy as np
-import patsy
-from scipy.sparse import issparse
-from pandas.api.types import is_categorical_dtype
-from anndata import AnnData
-from scanpy import settings as sett
-from scanpy import logging as logg
+def readHCA(fin):
+    f = h5py.File(fin, 'r')
+    data = f[list(f.keys())[0]]
+    X = csr_matrix((np.array(data.get("data")), 
+                np.array(data.get("indices")), 
+                np.array(data.get("indptr"))), 
+                shape=np.array(data.get("shape"))[::-1])
+    ad = sc.AnnData(X)
+    ad.obs_names = np.array(data.get("barcodes")).astype(str)
+    ad.var_names = np.array(data.get("gene_names")).astype(str)
+    ad.var['ensembl_gene'] = np.array(data.get("genes")).astype(str)
+    return(ad)
+    
+    
+def sc_workflow(ad, prefix='L1', resolution=1.5, n_pcs=15, do_tsne=True):
+    sc.pp.normalize_per_cell(ad, counts_per_cell_after=1e4)
+    filter_result = sc.pp.filter_genes_dispersion(
+        ad.X, min_mean=0.0125, max_mean=10, min_disp=0.25)
+    sc.pl.filter_genes_dispersion(filter_result)
+    print("n_HVGs: %d" % sum(filter_result.gene_subset))
+    ad = ad[:, filter_result.gene_subset]
+    sc.pp.log1p(ad)
+    sc.pp.scale(ad, max_value=10)
+    sc.tl.pca(ad)
+    if do_tsne:
+        sc.tl.tsne(ad, n_pcs=n_pcs, random_state=2)
+    sc.pp.neighbors(ad, n_neighbors=10, n_pcs=n_pcs)
+    sc.tl.umap(ad)
+    sc.tl.louvain(ad, resolution=resolution)
+    ad.obs["%s_res%.f" % (prefix, resolution)] = ad.obs["louvain"]
+    return ad
 
 
 def sc_pp_regress_out(adata, keys, n_jobs=None, copy=False):
@@ -1571,24 +1381,9 @@ def sc_pp_regress_out(adata, keys, n_jobs=None, copy=False):
     return adata if copy else None
 
 
-def make_unique(dup_list):
-    from collections import Counter
-    counter = Counter()
-    deduped = []
-    for name in dup_list:
-        new = name + "_%s" % str(counter[name]) if counter[name] else name
-        counter.update({name: 1})
-        deduped.append(new)
-    return deduped
-
-
 def regress_out(metadata, exprs, covariate_formula, design_formula='1', rcond=-1):
-    """ Implementation of limma's removeBatchEffect function
-        :metadata the obs part of AnnData
-        :exprs the AnnData.X or the AnnData.raw.X
-        :covariate_formula formula for Patsy (variance we want to regress out: counts, batches, etc)
-        :design_formula design formula for Patsy (what we want to keep)
-        :rcond
+    """ Implementation of limma's removeBatchEffect function, 
+    a copy from NaiveDE (https://github.com/Teichlab/NaiveDE)
     """
     # Ensure intercept is not part of covariates
     # covariate_formula is the variance to be kept, design_formula is the variance to regress out
@@ -1604,276 +1399,3 @@ def regress_out(metadata, exprs, covariate_formula, design_formula='1', rcond=-1
     beta = coefficients[covariate_matrix.shape[1]:]
     return exprs - design_matrix.dot(beta).T
 
-
-def SubsetData(ad, sele, ad_raw):
-    ad = ad[sele, :]
-    ad1 = ad_raw[ad_raw.obs_names.isin(ad.obs_names), :]
-    for col in ad.obs.columns:
-        ad1.obs[col] = ad.obs[col]
-    return ad1
-
-from scanpy.plotting.palettes import *
-
-
-def find_high_resolution(ad, resolution=4, n=100):
-    cut = resolution
-    while cut > 0.5:
-        print("clustering with resolution: %.1f" % cut)
-        sc.tl.leiden(ad, resolution=cut)
-        ad.obs['leiden_res%.1f' % cut] = ad.obs['leiden']
-        if ad.obs['leiden'].value_counts().min() > n:
-            break
-        cut -= 0.5
-
-def get_connection_matrix(ad_obs, key1, key2):
-    df = ad_obs.groupby([key1,key2]).size().to_frame().reset_index()
-    df.columns = [key1,key2,'counts']
-    df2 = ad_obs[key2].value_counts()
-    df['size'] = df2[df[key2].tolist()].tolist()
-    df['percent'] = df['counts']/df['size']
-    df = df[df['percent']>0.1]
-    df2 = df.groupby(key1).size()
-    df2 = df2[df2>1]
-    df = df[df[key1].isin(df2.index)]
-
-    dim = len(ad_obs[key2].unique())
-    mat = pd.DataFrame(np.zeros([dim,dim])).astype(int)
-    mat.columns = mat.columns.astype(str)
-    mat.index = mat.index.astype(str)
-
-    import itertools
-    grouped = df.groupby(key1)
-    for name, group in grouped:
-        x = group[key2]
-        if len(x)>0:
-            for i,j in list(itertools.combinations(x.tolist(), 2)):
-                mat.loc[i,j] = mat.loc[j,i] = 1
-    return mat
-
-
-def SCCAF_optimize_all_V2(ad,
-                          min_acc=0.9,
-                          R1norm_cutoff=0.5,
-                          R1norm_step=0.01,
-                          prefix='L1',
-                          *args, **kwargs):
-    """
-    ad: `AnnData`
-        The AnnData object of the expression profile.
-    min_acc: `float` optional (default: 0.9)
-        The minimum self-projection accuracy to be optimized for.
-        e.g., 0.9 means the clustering optimization (merging process)
-        will not stop until the self-projection accuracy is above 90%.
-    R1norm_cutoff: `float` optional (default: 0.5)
-        The start cutoff for R1norm of confusion matrix.
-        e.g., 0.5 means use 0.5 as a cutoff to discretize the confusion matrix after R1norm.
-        the discretized matrix is used to construct the connection graph for clustering optimization.
-    R2norm_cutoff: `float` optional (default: 0.05)
-        The start cutoff for R2norm of confusion matrix.
-    R1norm_step: `float` optional (default: 0.01)
-        The reduce step for minimum R1norm value.
-        Each round of optimization calls the function `SCCAF_optimize`.
-        The start of the next round of optimization is based on a new
-        cutoff for the R1norm of the confusion matrix. This cutoff is
-        determined by the minimum R1norm value in the previous round minus the R1norm_step value.
-    R2norm_step: `float` optional (default: 0.001)
-        The reduce step for minimum R2norm value.
-    """
-    acc = 0
-    c = 0
-    start_iter = 0
-    start_old = 0
-    n_iter = 0
-    clstr_old = len(ad.obs['%s_Round%d'%(prefix,start_iter)].unique())
-    while acc < min_acc:
-        print("start_iter: %d" % start_iter)
-        print("R1norm_cutoff: %f" % R1norm_cutoff)
-        print("Accuracy: %f" % acc)
-        print("======================")
-        ad, m1, acc, start_iter = SCCAF_optimize_V2(ad = ad,
-                                                    R1norm_cutoff=R1norm_cutoff,          
-                                                    start_iter=start_iter,
-                                                    min_acc=min_acc, *args, **kwargs)
-        clstr_new = len(ad.obs['%s_result'%prefix].unique())
-        if clstr_new >= clstr_old:
-            c +=1
-            print('c: %d'%c)
-        if start_iter == start_old:
-            c +=1
-            start_old = start_iter
-        
-        if c > 10:
-            break
-        else:
-            clstr_new = clstr_old
-        print("m1: %f" % m1)
-        print("Accuracy: %f" % acc)
-        R1norm_cutoff = m1 - R1norm_step
-        n_iter +=1
-        if n_iter >10:
-            break
-
-
-def SCCAF_optimize_V2(ad,
-                      prefix='L1',
-                      use='raw',
-                      use_projection=False,
-                      plot=True,
-                      basis='umap',
-                      c_iter=3,
-                      n_iter=10,
-                      n_jobs=None,
-                      start_iter=0,
-                      sparsity=0.5,
-                      n=100,
-                      fraction=0.5,
-                      R1norm_only=False,
-                      R1norm_cutoff=0.1,
-                      mod='1',
-                      undercluster_bound_key=None,
-                      classifier="LR",
-                      min_acc=1):
-    """
-    This is a self-projection confusion matrix directed cluster optimization function.
-
-    Input
-    -----
-    ad: `AnnData`
-        The AnnData object of the expression profile.
-    prefix: `String`, optional (default: 'L1')
-        The name of the optimization, which set as a prefix.
-        e.g., the prefix = 'L1', the start round of optimization clustering is based on
-        'L1_Round0'. So we need to assign an over-clustering state as a start point.
-        e.g., ad.obs['L1_Round0'] = ad.obs['louvain']
-    use: `String`, optional (default: 'raw')
-        Use what features to train the classifier. Three choices:
-        'raw' uses all the features;
-        'hvg' uses the highly variable genes in the anndata object ad.var_names slot;
-        'pca' uses the PCA data in the anndata object ad.obsm['X_pca'] slot.
-    R1norm_only: `bool` optional (default: False)
-        If only use the confusion matrix(R1norm) for clustering optimization.
-    plot: `bool` optional (default: True)
-        If plot the self-projectioin results, ROC curves and confusion matrices,
-        during the optimization.
-    mod: `string` optional (default: '1')
-        two directions of normalization of confusion matrix for R1norm.
-    c_iter: `int` optional (default: 3)
-        Number of iterations of sampling for the confusion matrix.
-        The minimum value of confusion rate in all the iterations is used as the confusion rate between two clusters.
-    n_iter： `int` optional (default: 10)
-        Maximum number of iterations(Rounds) for the clustering optimization.
-    start_iter： `int` optional (default: 0)
-        The start round of the optimization. e.g., start_iter = 3,
-        the optimization will start from ad.obs['%s_3'%prefix].
-    sparsity: `fload` optional (default: 0.5)
-        The sparsity parameter (C in sklearn.linear_model.LogisticRegression) for the logistic regression model.
-    n: `int` optional (default: 100)
-        Maximum number of cell included in the training set for each cluster of cells.
-    fraction: `float` optional (default: 0.5)
-        Fraction of data included in the training set. 0.5 means use half of the data for training,
-        if half of the data is fewer than maximum number of cells (n).
-    R1norm_cutoff: `float` optional (default: 0.1)
-        The cutoff for the confusion rate (R1norm) between two clusters.
-        0.1 means we allow maximum 10% of the one cluster confused as another cluster.
-    key1: `str` optional
-		the clustering boundary for under-clustering. Set a low resolution in louvain/leiden clustering and give
-		the key as the underclustering boundary.
-    classifier: `String` optional (default: 'LR')
-        a machine learning model in "LR" (logistic regression), \
-        "RF" (Random Forest), "GNB"(Gaussion Naive Bayes), "SVM" (Support Vector Machine) and "DT"(Decision Tree).
-    min_acc: `float`
-		the minimum total accuracy to be achieved. Above this threshold, the optimization will stop.
-
-    return
-    -----
-    The modified anndata object, with a slot "%s_result"%prefix
-        assigned as the clustering optimization results.
-    """
-
-    X = None
-    if use == 'raw':
-        X = ad.raw.X
-    elif use == 'pca':
-        if 'X_pca' not in ad.obsm.dtype.fields:
-            raise ValueError("`adata.obsm['X_pca']` doesn't exist. Run `sc.pp.pca` first.")
-        X = ad.obsm['X_pca']
-    else:
-        X = ad[:,ad.var['highly_variable']].X
-
-    for i in range(start_iter, start_iter + n_iter):
-        print("Round%d ..." % (i + 1))
-        old_id = '%s_Round%d' % (prefix, i)
-        new_id = '%s_Round%d' % (prefix, i + 1)
-
-        labels = np.sort(ad.obs[old_id].unique().astype(int)).astype(str)
-
-        # optimize
-        y_prob, y_pred, y_test, clf, cvsm, acc = \
-            self_projection(X, ad.obs[old_id], sparsity=sparsity, n=n,
-                            fraction=fraction, classifier=classifier, n_jobs=n_jobs)
-        accs = [acc]
-        ad.obs['%s_self-projection' % old_id] = clf.predict(X)
-        
-        if plot:
-            aucs = plot_roc(y_prob, y_test, clf, cvsm=cvsm, acc=acc)
-            plt.show()
-
-            sc.pl.scatter(ad, basis=basis, color=['%s_self-projection' % old_id], \
-                          color_map="RdYlBu_r", legend_loc='on data', frameon=False)
-
-        cmat = confusion_matrix(y_test, y_pred, clf, labels=labels)
-        xmat = normalize_confmat1(cmat, mod)
-        xmats = [xmat]
-        cmats = [np.array(cmat)]
-        old_id1 = old_id
-        if use_projection: 
-            old_id1 = '%s_self-projection' % old_id
-        for j in range(c_iter - 1):
-            y_prob, y_pred, y_test, clf, _, acc = self_projection(X, ad.obs[old_id1], sparsity=sparsity, n=n,
-                                                                  fraction=fraction, classifier=classifier, cv=0,
-                                                                  n_jobs=n_jobs)
-            accs.append(acc)
-            cmat = confusion_matrix(y_test, y_pred, clf, labels=labels)
-            xmat = normalize_confmat1(cmat, mod)
-            xmats.append(xmat)
-            cmats.append(np.array(cmat))
-        R1mat = np.minimum.reduce(xmats)
-
-        m1 = np.max(R1mat)
-        if np.isnan(m1):
-            m1 = 1.
-        print("Max R1mat: %f" % m1)
-
-        if np.min(accs) > min_acc:
-            ad.obs['%s_result' % prefix] = ad.obs[old_id]
-            print("Converge1!")
-            break
-
-        if plot:
-            plot_heatmap_gray(R1mat, 'Normalized Confusion Matrix (R1norm)')
-        
-
-        if R1norm_only:
-            groups = cluster_adjmat(R1mat, cutoff=R1norm_cutoff)
-        else:
-            if undercluster_bound_key:
-                conn_mat = get_connection_matrix(ad_obs=ad.obs, key1=undercluster_bound_key, key2=old_id)
-                zmat = np.minimum.reduce([(R1mat > R1norm_cutoff), conn_mat.values])
-                groups = cluster_adjmat(zmat, cutoff=0)
-            else:
-                groups = cluster_adjmat(R1mat, cutoff=R1norm_cutoff)
-
-        if len(np.unique(groups)) == len(ad.obs[old_id].unique()):
-            ad.obs['%s_result' % prefix] = ad.obs[old_id]
-            print("Converged!")
-            break
-        
-        merge_cluster(ad, old_id1, new_id, groups)
-        
-        if plot:
-            sc.pl.scatter(ad, basis=basis, color=[new_id], color_map="RdYlBu_r", legend_loc='on data')
-        if len(np.unique(groups)) <= 1:
-            ad.obs['%s_result' % prefix] = ad.obs[new_id]
-            print("no clustering!")
-            break
-    return ad, m1, np.min(accs), i
