@@ -38,6 +38,8 @@ parser.add_argument("-c", "--cores",
 parser.add_argument("-u", "--undercluster-boundary",
                     help="Label for the underclustering boundary to use in the optimisation. "
                          "It should be present in the annData object")
+parser.add_argument("--pca", help="Use PCA embeddings during optimisation", action="store_true", default=False)
+parser.add_argument("--c-iter", help="Number of iterations of sampling for the confusion matrix", default=None, type=int)
 parser.add_argument("--produce-rounds-summary", action="store_true",
                     help="Set to produce summary files for each round of optimisation"
                     )
