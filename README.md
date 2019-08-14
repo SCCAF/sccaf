@@ -1,18 +1,70 @@
+[![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/sccaf/README.html)
+
+
 # SCCAF: Single Cell Clustering Assessment Framework
 
 Single Cell Clustering Assessment Framework (SCCAF) is a novel method for automated identification of putative cell types from single cell RNA-seq (scRNA-seq) data. By iteratively applying clustering and a machine learning approach to gene expression profiles of a given set of cells, SCCAF simultaneously identifies distinct cell groups and a weighted list of feature genes for each group. The feature genes, which are overexpressed in the particular cell group, jointly discriminate the given cell group from other cells. Each such group of cells corresponds to a putative cell type or state, characterised by the feature genes as markers.
 
 # Requirements
 
-This package requires Python 3 and pip3 for installation, which will take care of dependencies.
+This package requirements vary depending on the way that you want to install it (all three are independent, you don't need all these requirements):
+
+- pip: if installation goes through pip, you will require Python3 and pip3 installed.
+- Bioconda: if installation goes through Bioconda, you will require that [conda is installed and configured to use bioconda channels](https://bioconda.github.io/user/index.html).
+- Docker container: to use SCCAF from its docker container you will need [Docker](https://docs.docker.com/install/) installed.
+- Source code: to use and install from the source code directly, you will need to have git, Python3 and pip.
+
+The tool depends on other Python/conda packages, but these are automatically resolved by the different installation methods.
+
+The tool has been tested with the following versions:
+- conda: versions 4.7.5 and 4.7.10, but it should work with most other versions.
+- Docker: version 18.09.2, but should work with most other versions.
+- Python: versions 3.6.5 and 3.7. We don't expect this to work with Python 2.x.
+- Pip3: version 9.0.3, but any version of pip3 should work.
+
+This software doesn't require any non-standard hardware.
 
 # Installation
+
+## pip
 
 You can install SCCAF with pip:
 
 ```
 pip install sccaf
 ```
+
+Installation time on laptop with 16 GB of RAM and academic (LAN) internet connection: <10 minutes.
+
+## Bioconda
+
+You can install SCCAF with bioconda (please setup conda and the bioconda channel if you haven't first, as explained [here](https://bioconda.github.io/user/index.html)):
+
+```
+conda install sccaf
+```
+
+Installation time on laptop with 16 GB of RAM and academic (LAN) internet connection: <5 minutes.
+
+## Available as a container
+
+You can use the SCCAF tool already setup on a Docker container. You need to choose from the available tags [here](https://quay.io/repository/biocontainers/sccaf?tab=tags) and replace it in the call below where it says `<tag>`.
+
+```
+docker pull quay.io/biocontainers/sccaf:<tag>
+```
+
+**Note:** Biocontainer's containers do not have a latest tag, as such a docker pull/run without defining the tag will fail. For instance, a valid call would be (for version 0.0.3):
+
+```
+docker run -it quay.io/biocontainers/sccaf:0.0.3--py_0
+```
+
+Inside the container, you can either use the Python interactive shell or the command line version (see below).
+
+Installation (pull) time on laptop with 16 GB of RAM and academic (LAN) internet connection: ~10 minutes.
+
+## Use latest source code
 
 Alternatively, for the latest version, clone this repo and go into its directory, then execute `pip3 install .`:
 
@@ -25,11 +77,13 @@ pip3 install .
 
 if your python environment is configured for python 3, then you should be able to replace python3 for just python (although pip3 needs to be kept). In time this will be simplified by a simple pip call.
 
+Installation (pull) time on laptop with 16 GB of RAM and academic (LAN) internet connection: ~10 minutes.
+
 # Usage within Python environment
 
 ## Use with pre-clustered `anndata` object in the [SCANPY](https://scanpy.readthedocs.io/en/stable/) package
 
-The main method of SCCAF can be applied directly to an [anndata](https://anndata.readthedocs.io/en/stable/) (AnnData is the main data format used by [Scanpy](https://scanpy.readthedocs.io/en/stable/)) object in Python. 
+The main method of SCCAF can be applied directly to an [anndata](https://anndata.readthedocs.io/en/stable/) (AnnData is the main data format used by [Scanpy](https://scanpy.readthedocs.io/en/stable/)) object in Python.
 
 **Before applying SCCAF, please make sure the doublets have been excluded and the batch effect has been effectively regressed.**
 
@@ -56,7 +110,7 @@ plot_roc(y_prob, y_test, clf, cvsm=cvsm, acc=acc)
 plt.show()
 ```
 
-Higher accuracy indicate better discrimination. And the ROC curve shows the problematic clusters. 
+Higher accuracy indicate better discrimination. And the ROC curve shows the problematic clusters.
 
 ## Optimize an over-clustering
 
@@ -81,6 +135,13 @@ then remove the `plots=False`.
 
 
 Within the anndata object, assignments of cells to clusters will be left in `adata.obs['<prefix>_Round<roundNumber>']`.
+
+# Notebook demo
+
+You can find some demonstrative Jupyter Notebooks [here](notebook):
+
+- [Zeisel Mouse Cortex Demo](notebook/Zeisel_Mouse_Cortex_Demo.ipynb)
+    - Expected execution time on a 16 GB RAM standard laptop: ~15 minutes
 
 # Usage from the command line
 
