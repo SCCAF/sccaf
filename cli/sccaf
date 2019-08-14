@@ -37,7 +37,7 @@ parser.add_argument("-c", "--cores",
                     help="Number of processors to use", type=int, default=1)
 parser.add_argument("-u", "--undercluster-boundary",
                     help="Label for the underclustering boundary to use in the optimisation. "
-                         "It should be present in the annData object", type=int, default=1)
+                         "It should be present in the annData object")
 parser.add_argument("--produce-rounds-summary", action="store_true",
                     help="Set to produce summary files for each round of optimisation"
                     )
@@ -98,7 +98,7 @@ if args.optimise:
 
     if args.undercluster_boundary:
         sf.SCCAF_optimize_all_V2(min_acc=args.min_accuracy, ad=ad, plot=False, n_jobs=args.cores,
-                                 undercluster_bound_label=args.undercluster_boundary)
+                                 undercluster_bound_key=args.undercluster_boundary)
     else:
         sf.SCCAF_optimize_all(min_acc=args.min_accuracy, ad=ad, plot=False, n_jobs=args.cores)
     logging.info("Run optimise: DONE")
