@@ -14,7 +14,7 @@ script:
   - echo "Checking if rounds file is present..."
   - test -f rounds.txt && echo "Rounds file exist"
   - mkdir -p results
-  - sccaf-assess -i output.h5 -o results/sccaf_assess_6.txt --slot-for-existing-clustering L1_Round6 --iterations 20
-  - sccaf-assess -i output.h5 -o results/sccaf_assess_7.txt --slot-for-existing-clustering L1_Round7 --iterations 20
-  - test -f sccaf_assess_6.txt && test -f sccaf_assess_7.txt
+  - sccaf-assess -i output.h5 -o results/sccaf_assess_3.txt --slot-for-existing-clustering L1_Round6 --iterations 10
+  - sccaf-assess -i output.h5 -o results/sccaf_assess_4.txt --slot-for-existing-clustering L1_Round7 --iterations 10
+  - test -f sccaf_assess_3.txt && test -f sccaf_assess_4.txt
   - sccaf-assess-merger -i ./results -r rounds.txt -o report_merge.pdf
