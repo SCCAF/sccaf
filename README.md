@@ -12,7 +12,7 @@ This package requirements vary depending on the way that you want to install it 
 - pip: if installation goes through pip, you will require Python3 and pip3 installed.
 - Bioconda: if installation goes through Bioconda, you will require that [conda is installed and configured to use bioconda channels](https://bioconda.github.io/user/index.html).
 - Docker container: to use SCCAF from its docker container you will need [Docker](https://docs.docker.com/install/) installed.
-- Source code: to use and install from the source code directly, you will need to have git, Python3 and pip. 
+- Source code: to use and install from the source code directly, you will need to have git, Python3 and pip.
 
 The tool depends on other Python/conda packages, but these are automatically resolved by the different installation methods.
 
@@ -83,7 +83,7 @@ Installation (pull) time on laptop with 16 GB of RAM and academic (LAN) internet
 
 ## Use with pre-clustered `anndata` object in the [SCANPY](https://scanpy.readthedocs.io/en/stable/) package
 
-The main method of SCCAF can be applied directly to an [anndata](https://anndata.readthedocs.io/en/stable/) (AnnData is the main data format used by [Scanpy](https://scanpy.readthedocs.io/en/stable/)) object in Python. 
+The main method of SCCAF can be applied directly to an [anndata](https://anndata.readthedocs.io/en/stable/) (AnnData is the main data format used by [Scanpy](https://scanpy.readthedocs.io/en/stable/)) object in Python.
 
 **Before applying SCCAF, please make sure the doublets have been excluded and the batch effect has been effectively regressed.**
 
@@ -110,7 +110,7 @@ plot_roc(y_prob, y_test, clf, cvsm=cvsm, acc=acc)
 plt.show()
 ```
 
-Higher accuracy indicate better discrimination. And the ROC curve shows the problematic clusters. 
+Higher accuracy indicate better discrimination. And the ROC curve shows the problematic clusters.
 
 ## Optimize an over-clustering
 
@@ -135,6 +135,10 @@ then remove the `plots=False`.
 
 
 Within the anndata object, assignments of cells to clusters will be left in `adata.obs['<prefix>_Round<roundNumber>']`.
+
+# Notebook demo
+
+You can find some demonstrative Jupyter Notebooks [here](notebook).
 
 # Usage from the command line
 
