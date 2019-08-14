@@ -27,7 +27,7 @@ parser.add_argument("--skip-assessment", action="store_true",
                          "assessment of the clustering")
 parser.add_argument("-s", "--slot-for-existing-clustering",
                     help="Use clustering pre-computed in the input object, available in this slot of the object.")
-parser.add_argument("-r", "--resolution", default=1.5, type=float,
+parser.add_argument("-r", "--resolution", default=None, type=float,
                     help="Resolution for running clustering when no internal or external clustering is given.")
 parser.add_argument("-a", "--min-accuracy", type=float,
                     help="Accuracy threshold for convergence of the optimisation procedure.")
@@ -58,6 +58,10 @@ if args.external_clustering_tsv:
     cluster = pd.read_table(args.external_clustering_tsv, usecols=[0, 1], index_col=0, header=0)
     cluster.columns = ['CLUSTER']
     y = (pd.merge(ad.obs, cluster, how='left', left_index=True, right_index=True))['CLUSTER']
+elif args.resolution:
+    sc.tl.louvain(ad, resolution=args.resolution, key_added='{}_Round0'.format(args.prefix))
+    y = ad.obs['{}_Round0'.format(args.prefix)]
+    logging.info("Run louvain for starting point: DONE")
 else:
     y = ad.obs[args.slot_for_existing_clustering]
 
@@ -89,10 +93,7 @@ def extract_round_number(text):
 
 
 if args.optimise:
-    if args.resolution:
-        sc.tl.louvain(ad, resolution=args.resolution, key_added='{}_Round0'.format(args.prefix))
-        logging.info("Run louvain for starting point: DONE")
-    else:
+    if not args.resolution:
         # We use the predefined clustering (either internal or external).
         ad.obs['{}_Round0'.format(args.prefix)] = y
 
