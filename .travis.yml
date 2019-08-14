@@ -1,0 +1,21 @@
+sudo: required
+language: python
+python: 3.6
+
+
+install:
+  - pip install .
+
+script:
+  - wget -O Zeisel_reg.h5 "https://drive.google.com/uc?export=download&id=1hprRFkEk8q27kqrt9RLvY6aqu6XWPb2C"
+  - sccaf -i Zeisel_reg.h5 --optimise --skip-assessment -o output.h5 -s louvain -a 0.89 --produce-rounds-summary
+  - echo "Checking if output file is present..."
+  - test -f output.h5 && echo "Output file exist"
+  - echo "Checking if rounds file is present..."
+  - test -f rounds.txt && echo "Rounds file exist"
+  - mkdir -p results
+  - sccaf-assess -i output.h5 -o results/sccaf_assess_3.txt --slot-for-existing-clustering L1_Round3 --iterations 6
+  - sccaf-assess -i output.h5 -o results/sccaf_assess_4.txt --slot-for-existing-clustering L1_Round4 --iterations 6
+  - test -f results/sccaf_assess_3.txt && test -f results/sccaf_assess_4.txt
+  - sccaf-assess-merger -i ./results -r rounds.txt -o report_merge.pdf
+  - test -f report_merge.pdf
