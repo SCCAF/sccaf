@@ -8,7 +8,7 @@ install:
 
 script:
   - wget -O Zeisel_reg.h5 "https://drive.google.com/uc?export=download&id=1hprRFkEk8q27kqrt9RLvY6aqu6XWPb2C"
-  - sccaf -i Zeisel_reg.h5 --optimise --skip-assessment -o output.h5 -s louvain -a 0.8 --produce-rounds-summary
+  - sccaf -i Zeisel_reg.h5 --optimise --skip-assessment -o output.h5 -s louvain -a 0.89 --produce-rounds-summary
   - echo "Checking if output file is present..."
   - test -f output.h5 && echo "Output file exist"
   - echo "Checking if rounds file is present..."
