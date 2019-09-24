@@ -103,8 +103,8 @@ if args.optimise:
         backend = PdfPages(args.optimisation_plots_output)
 
     if args.undercluster_boundary:
-        sf.SCCAF_optimize_all_V2(min_acc=args.min_accuracy, ad=ad, plot=False, n_jobs=args.cores,
-                                 undercluster_bound_key=args.undercluster_boundary)
+        sf.SCCAF_optimize_all(min_acc=0.955, ad=ad, plot=False, n_jobs=args.cores,
+                              low_res=args.undercluster_boundary)
     else:
         sf.SCCAF_optimize_all(min_acc=args.min_accuracy, ad=ad, plot=plots, n_jobs=args.cores,
                               matplotlib_backend=backend)
