@@ -685,7 +685,8 @@ def SCCAF_optimize(ad,
                    R1norm_cutoff=0.1,
                    R2norm_cutoff=1,
                    dist_cutoff=8,
-                   classifier="LR", 
+                   classifier="LR",
+                   mplotlib_backend=None,
                    min_acc=1):
     """
     This is a self-projection confusion matrix directed cluster optimization function.
@@ -754,6 +755,9 @@ def SCCAF_optimize(ad,
     classifier: `String` optional (default: 'LR')
         a machine learning model in "LR" (logistic regression), \
         "RF" (Random Forest), "GNB"(Gaussion Naive Bayes), "SVM" (Support Vector Machine) and "DT"(Decision Tree).
+    mplotlib_backend: `matplotlib.backends.backend_pdf` optional
+        MatPlotLib multi-page backend object instance, previously initialised (currently the only type supported is
+        PdfPages).
     min_acc: `float`
 		the minimum total accuracy to be achieved. Above this threshold, the optimization will stop.
 
@@ -789,10 +793,15 @@ def SCCAF_optimize(ad,
         
         if plot:
             aucs = plot_roc(y_prob, y_test, clf, cvsm=cvsm, acc=acc)
-            plt.show()
+            if mplotlib_backend:
+                mplotlib_backend.savefig()
+            else:
+                plt.show()
 
             sc.pl.scatter(ad, basis=basis, color=['%s_self-projection' % old_id], \
                           color_map="RdYlBu_r", legend_loc='on data', frameon=False)
+            if mplotlib_backend:
+                mplotlib_backend.savefig()
 
         cmat = confusion_matrix(y_test, y_pred, clf, labels=labels)
         xmat = normalize_confmat1(cmat, mod)
@@ -826,9 +835,9 @@ def SCCAF_optimize(ad,
 
         if plot:
             if plot_cmat:
-                plot_heatmap_gray(cmat, 'Confusion Matrix')
-            plot_heatmap_gray(R1mat, 'Normalized Confusion Matrix (R1norm)')
-            plot_heatmap_gray(R2mat, 'Normalized Confusion Matrix (R2norm)')
+                plot_heatmap_gray(cmat, 'Confusion Matrix', mplotlib_backend=mplotlib_backend)
+            plot_heatmap_gray(R1mat, 'Normalized Confusion Matrix (R1norm)', mplotlib_backend=mplotlib_backend)
+            plot_heatmap_gray(R2mat, 'Normalized Confusion Matrix (R2norm)', mplotlib_backend=mplotlib_backend)
 
         if R1norm_only:
             groups = cluster_adjmat(R1mat, cutoff=R1norm_cutoff)
@@ -852,6 +861,8 @@ def SCCAF_optimize(ad,
         
         if plot:
             sc.pl.scatter(ad, basis=basis, color=[new_id], color_map="RdYlBu_r", legend_loc='on data')
+            if mplotlib_backend:
+                mplotlib_backend.savefig()
         
         if len(np.unique(groups)) <= 1:
             ad.obs['%s_result' % prefix] = ad.obs[new_id]
@@ -912,7 +923,7 @@ def plot_link_scatter(ad, ymat, basis='pca', group='cell', title=''):
     return ax
 
 
-def plot_markers(top_markers, topn=10, save=None):
+def plot_markers(top_markers, topn=10, save=None, mplotlib_backend=None):
     """
     Plot the top marker genes as a figure.
 
@@ -943,6 +954,8 @@ def plot_markers(top_markers, topn=10, save=None):
     plt.tight_layout()
     if save:
         plt.savefig(save)
+    elif mplotlib_backend:
+        mplotlib_backend.savefig()
     else:
         plt.show()
 
@@ -967,7 +980,7 @@ def sc_pl_scatter(ad, basis='tsne', color='cell'):
     return df
 
 
-def plot_heatmap_gray(X, title='', save=None):
+def plot_heatmap_gray(X, title='', save=None, mplotlib_backend=None):
     plt.clf()
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -980,6 +993,8 @@ def plot_heatmap_gray(X, title='', save=None):
     cb = fig.colorbar(cax, cax=cbaxes)
     if save:
         plt.savefig(save)
+    elif mplotlib_backend:
+        mplotlib_backend.savefig()
     else:
         plt.show()
 

@@ -41,6 +41,7 @@ parser.add_argument("-u", "--undercluster-boundary",
 parser.add_argument("--produce-rounds-summary", action="store_true",
                     help="Set to produce summary files for each round of optimisation"
                     )
+parser.add_argument("--optimisation-plots-output", help="PDF file output path for all optimisation plots.")
 
 args = parser.parse_args()
 
@@ -96,11 +97,17 @@ if args.optimise:
         # We use the predefined clustering (either internal or external).
         ad.obs['{}_Round0'.format(args.prefix)] = y
 
+    if args.optimisation_plots_output:
+        plots = True
+        from matplotlib.backends.backend_pdf import PdfPages
+        backend = PdfPages(args.optimisation_plots_output)
+
     if args.undercluster_boundary:
         sf.SCCAF_optimize_all_V2(min_acc=args.min_accuracy, ad=ad, plot=False, n_jobs=args.cores,
                                  undercluster_bound_key=args.undercluster_boundary)
     else:
-        sf.SCCAF_optimize_all(min_acc=args.min_accuracy, ad=ad, plot=False, n_jobs=args.cores)
+        sf.SCCAF_optimize_all(min_acc=args.min_accuracy, ad=ad, plot=plots, n_jobs=args.cores,
+                              matplotlib_backend=backend)
     logging.info("Run optimise: DONE")
     #sc.pl.scatter(ad, base=args.visualisation, color=)
     y_prob, y_pred, y_test, clf, cvsm, acc = sf.SCCAF_assessment(X, ad.obs['{}_result'.format(args.prefix)],
@@ -120,6 +127,9 @@ if args.optimise:
         with open("rounds.txt", 'w') as f:
             for item in rounds:
                 f.write("%s\n" % item)
+
+    if backend:
+        backend.close()
 
     logging.info("Write output: DONE")
 
