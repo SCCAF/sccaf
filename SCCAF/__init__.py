@@ -330,7 +330,7 @@ def self_projection(X,
                              stratify=cell_types, test_size=fraction)  # fraction means test size
     # set the classifier
     if classifier == 'LR':
-        clf = LogisticRegression(random_state=1, penalty=penalty, C=sparsity, n_jobs=n_jobs)
+        clf = LogisticRegression(random_state=1, penalty=penalty, C=sparsity, multi_class="ovr", solver="liblinear")
     elif classifier == 'RF':
         clf = RandomForestClassifier(random_state=1, n_jobs=n_jobs)
     elif classifier == 'GNB':
