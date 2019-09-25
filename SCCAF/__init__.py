@@ -631,7 +631,7 @@ def SCCAF_optimize_all(ad,
     start_iter = 0
     
     clstr_old = len(ad.obs['%s_Round%d'%(prefix, start_iter)].unique())
-    #'while acc < min_acc:
+
     for i in range(10):
         print("start_iter: %d" % start_iter)
         print("R1norm_cutoff: %f" % R1norm_cutoff)
@@ -795,20 +795,24 @@ def SCCAF_optimize(ad,
             aucs = plot_roc(y_prob, y_test, clf, cvsm=cvsm, acc=acc)
             if mplotlib_backend:
                 mplotlib_backend.savefig()
+                plt.clf()
             else:
                 plt.show()
+            plt.close()
 
-            sc.pl.scatter(ad, basis=basis, color=['%s_self-projection' % old_id], \
+            sc.pl.scatter(ad, basis=basis, color=['%s_self-projection' % old_id], show=(mplotlib_backend is None),
                           color_map="RdYlBu_r", legend_loc='on data', frameon=False)
             if mplotlib_backend:
                 mplotlib_backend.savefig()
+                plt.clf()
 
         cmat = confusion_matrix(y_test, y_pred, clf, labels=labels)
         xmat = normalize_confmat1(cmat, mod)
         xmats = [xmat]
         cmats = [np.array(cmat)]
         old_id1 = old_id
-        if use_projection: old_id1 = '%s_self-projection' % old_id
+        if use_projection:
+            old_id1 = '%s_self-projection' % old_id
         for j in range(c_iter - 1):
             y_prob, y_pred, y_test, clf, _, acc = self_projection(X, ad.obs[old_id1], sparsity=sparsity, n=n,
                                                                   fraction=fraction, classifier=classifier, cv=0,
@@ -822,7 +826,8 @@ def SCCAF_optimize(ad,
         R2mat = normalize_confmat2(np.minimum.reduce(cmats))
 
         m1 = np.max(R1mat)
-        if np.isnan(m1): m1 = 1.
+        if np.isnan(m1):
+            m1 = 1.
         m2 = np.max(R2mat)
         print("Max R1mat: %f" % m1)
         print("Max R2mat: %f" % m2)
@@ -831,13 +836,13 @@ def SCCAF_optimize(ad,
             ad.obs['%s_result' % prefix] = ad.obs[old_id]
             print("Converge SCCAF_optimize min_acc!")
             break
-        print("min_acc: %f"%np.min(accs))
+        print("min_acc: %f" % np.min(accs))
 
         if plot:
             if plot_cmat:
                 plot_heatmap_gray(cmat, 'Confusion Matrix', mplotlib_backend=mplotlib_backend)
-            plot_heatmap_gray(R1mat, 'Normalized Confusion Matrix (R1norm)', mplotlib_backend=mplotlib_backend)
-            plot_heatmap_gray(R2mat, 'Normalized Confusion Matrix (R2norm)', mplotlib_backend=mplotlib_backend)
+            plot_heatmap_gray(R1mat, 'Normalized Confusion Matrix (R1norm) - %s' % old_id, mplotlib_backend=mplotlib_backend)
+            plot_heatmap_gray(R2mat, 'Normalized Confusion Matrix (R2norm) - %s' % old_id, mplotlib_backend=mplotlib_backend)
 
         if R1norm_only:
             groups = cluster_adjmat(R1mat, cutoff=R1norm_cutoff)
@@ -860,9 +865,11 @@ def SCCAF_optimize(ad,
         merge_cluster(ad, old_id1, new_id, groups)
         
         if plot:
-            sc.pl.scatter(ad, basis=basis, color=[new_id], color_map="RdYlBu_r", legend_loc='on data')
+            sc.pl.scatter(ad, basis=basis, color=[new_id], color_map="RdYlBu_r", legend_loc='on data',
+                          show=(mplotlib_backend is None))
             if mplotlib_backend:
                 mplotlib_backend.savefig()
+                plt.clf()
         
         if len(np.unique(groups)) <= 1:
             ad.obs['%s_result' % prefix] = ad.obs[new_id]
@@ -1005,6 +1012,7 @@ def plot_roc(y_prob, y_test, clf, plot=True, save=None, title='', colors=None, c
     """
     aucs = []
     if plot:
+        plt.figure()
         if colors is None:
             if len(clf.classes_) < 21:
                 colors = default_20
