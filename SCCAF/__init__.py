@@ -330,7 +330,7 @@ def self_projection(X,
                              stratify=cell_types, test_size=fraction)  # fraction means test size
     # set the classifier
     if classifier == 'LR':
-        clf = LogisticRegression(random_state=1, penalty=penalty, C=sparsity, n_jobs=n_jobs)
+        clf = LogisticRegression(random_state=1, penalty=penalty, C=sparsity, multi_class="ovr", solver="liblinear")
     elif classifier == 'RF':
         clf = RandomForestClassifier(random_state=1, n_jobs=n_jobs)
     elif classifier == 'GNB':
@@ -631,7 +631,7 @@ def SCCAF_optimize_all(ad,
     start_iter = 0
     
     clstr_old = len(ad.obs['%s_Round%d'%(prefix, start_iter)].unique())
-    #'while acc < min_acc:
+
     for i in range(10):
         print("start_iter: %d" % start_iter)
         print("R1norm_cutoff: %f" % R1norm_cutoff)
@@ -685,7 +685,8 @@ def SCCAF_optimize(ad,
                    R1norm_cutoff=0.1,
                    R2norm_cutoff=1,
                    dist_cutoff=8,
-                   classifier="LR", 
+                   classifier="LR",
+                   mplotlib_backend=None,
                    min_acc=1):
     """
     This is a self-projection confusion matrix directed cluster optimization function.
@@ -754,6 +755,9 @@ def SCCAF_optimize(ad,
     classifier: `String` optional (default: 'LR')
         a machine learning model in "LR" (logistic regression), \
         "RF" (Random Forest), "GNB"(Gaussion Naive Bayes), "SVM" (Support Vector Machine) and "DT"(Decision Tree).
+    mplotlib_backend: `matplotlib.backends.backend_pdf` optional
+        MatPlotLib multi-page backend object instance, previously initialised (currently the only type supported is
+        PdfPages).
     min_acc: `float`
 		the minimum total accuracy to be achieved. Above this threshold, the optimization will stop.
 
@@ -789,17 +793,26 @@ def SCCAF_optimize(ad,
         
         if plot:
             aucs = plot_roc(y_prob, y_test, clf, cvsm=cvsm, acc=acc)
-            plt.show()
+            if mplotlib_backend:
+                mplotlib_backend.savefig()
+                plt.clf()
+            else:
+                plt.show()
+            plt.close()
 
-            sc.pl.scatter(ad, basis=basis, color=['%s_self-projection' % old_id], \
+            sc.pl.scatter(ad, basis=basis, color=['%s_self-projection' % old_id], show=(mplotlib_backend is None),
                           color_map="RdYlBu_r", legend_loc='on data', frameon=False)
+            if mplotlib_backend:
+                mplotlib_backend.savefig()
+                plt.clf()
 
         cmat = confusion_matrix(y_test, y_pred, clf, labels=labels)
         xmat = normalize_confmat1(cmat, mod)
         xmats = [xmat]
         cmats = [np.array(cmat)]
         old_id1 = old_id
-        if use_projection: old_id1 = '%s_self-projection' % old_id
+        if use_projection:
+            old_id1 = '%s_self-projection' % old_id
         for j in range(c_iter - 1):
             y_prob, y_pred, y_test, clf, _, acc = self_projection(X, ad.obs[old_id1], sparsity=sparsity, n=n,
                                                                   fraction=fraction, classifier=classifier, cv=0,
@@ -813,7 +826,8 @@ def SCCAF_optimize(ad,
         R2mat = normalize_confmat2(np.minimum.reduce(cmats))
 
         m1 = np.max(R1mat)
-        if np.isnan(m1): m1 = 1.
+        if np.isnan(m1):
+            m1 = 1.
         m2 = np.max(R2mat)
         print("Max R1mat: %f" % m1)
         print("Max R2mat: %f" % m2)
@@ -822,13 +836,13 @@ def SCCAF_optimize(ad,
             ad.obs['%s_result' % prefix] = ad.obs[old_id]
             print("Converge SCCAF_optimize min_acc!")
             break
-        print("min_acc: %f"%np.min(accs))
+        print("min_acc: %f" % np.min(accs))
 
         if plot:
             if plot_cmat:
-                plot_heatmap_gray(cmat, 'Confusion Matrix')
-            plot_heatmap_gray(R1mat, 'Normalized Confusion Matrix (R1norm)')
-            plot_heatmap_gray(R2mat, 'Normalized Confusion Matrix (R2norm)')
+                plot_heatmap_gray(cmat, 'Confusion Matrix', mplotlib_backend=mplotlib_backend)
+            plot_heatmap_gray(R1mat, 'Normalized Confusion Matrix (R1norm) - %s' % old_id, mplotlib_backend=mplotlib_backend)
+            plot_heatmap_gray(R2mat, 'Normalized Confusion Matrix (R2norm) - %s' % old_id, mplotlib_backend=mplotlib_backend)
 
         if R1norm_only:
             groups = cluster_adjmat(R1mat, cutoff=R1norm_cutoff)
@@ -851,7 +865,11 @@ def SCCAF_optimize(ad,
         merge_cluster(ad, old_id1, new_id, groups)
         
         if plot:
-            sc.pl.scatter(ad, basis=basis, color=[new_id], color_map="RdYlBu_r", legend_loc='on data')
+            sc.pl.scatter(ad, basis=basis, color=[new_id], color_map="RdYlBu_r", legend_loc='on data',
+                          show=(mplotlib_backend is None))
+            if mplotlib_backend:
+                mplotlib_backend.savefig()
+                plt.clf()
         
         if len(np.unique(groups)) <= 1:
             ad.obs['%s_result' % prefix] = ad.obs[new_id]
@@ -912,7 +930,7 @@ def plot_link_scatter(ad, ymat, basis='pca', group='cell', title=''):
     return ax
 
 
-def plot_markers(top_markers, topn=10, save=None):
+def plot_markers(top_markers, topn=10, save=None, mplotlib_backend=None):
     """
     Plot the top marker genes as a figure.
 
@@ -943,6 +961,8 @@ def plot_markers(top_markers, topn=10, save=None):
     plt.tight_layout()
     if save:
         plt.savefig(save)
+    elif mplotlib_backend:
+        mplotlib_backend.savefig()
     else:
         plt.show()
 
@@ -967,7 +987,7 @@ def sc_pl_scatter(ad, basis='tsne', color='cell'):
     return df
 
 
-def plot_heatmap_gray(X, title='', save=None):
+def plot_heatmap_gray(X, title='', save=None, mplotlib_backend=None):
     plt.clf()
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -980,6 +1000,8 @@ def plot_heatmap_gray(X, title='', save=None):
     cb = fig.colorbar(cax, cax=cbaxes)
     if save:
         plt.savefig(save)
+    elif mplotlib_backend:
+        mplotlib_backend.savefig()
     else:
         plt.show()
 
@@ -990,6 +1012,7 @@ def plot_roc(y_prob, y_test, clf, plot=True, save=None, title='', colors=None, c
     """
     aucs = []
     if plot:
+        plt.figure()
         if colors is None:
             if len(clf.classes_) < 21:
                 colors = default_20
