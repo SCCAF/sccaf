@@ -98,6 +98,7 @@ if args.optimise:
         ad.obs['{}_Round0'.format(args.prefix)] = y
 
     plots = False
+    backend=None
     if args.optimisation_plots_output:
         plots = True
         from matplotlib.backends.backend_pdf import PdfPages
