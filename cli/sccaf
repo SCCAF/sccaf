@@ -97,13 +97,14 @@ if args.optimise:
         # We use the predefined clustering (either internal or external).
         ad.obs['{}_Round0'.format(args.prefix)] = y
 
+    plots = False
     if args.optimisation_plots_output:
         plots = True
         from matplotlib.backends.backend_pdf import PdfPages
         backend = PdfPages(args.optimisation_plots_output)
 
     if args.undercluster_boundary:
-        sf.SCCAF_optimize_all(min_acc=0.955, ad=ad, plot=False, n_jobs=args.cores,
+        sf.SCCAF_optimize_all(min_acc=0.955, ad=ad, plot=plots, n_jobs=args.cores,
                               low_res=args.undercluster_boundary, mplotlib_backend=backend)
     else:
         sf.SCCAF_optimize_all(min_acc=args.min_accuracy, ad=ad, plot=plots, n_jobs=args.cores,
