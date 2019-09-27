@@ -52,7 +52,7 @@ for asses_file in glob.glob("{}/sccaf_assess_*.txt".format(args.input_directory)
 
 fig, ax = pyplot.subplots(figsize=(9, 7))
 pyplot.xticks(rotation=45)
-sb.violinplot(x="Round", y="Accuracy", hue="Type", data=df_merged, order=sorted_rounds, cut=0, palette={'Test': '#3cb44b', 'CV': '#e6194b'})
+sb.violinplot(x="Round", y="Accuracy", hue="Type", data=df_merged, order=sorted_rounds, cut=0, palette={'Test': '#3cb44b', 'CV': '#e6194b'}).set_title("Test and cross validation accuracies per SCCAF round.")
 pyplot.legend(loc='lower right')
 pyplot.savefig(args.output_plot)
 
