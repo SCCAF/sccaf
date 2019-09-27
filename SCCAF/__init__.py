@@ -792,7 +792,7 @@ def SCCAF_optimize(ad,
         ad.obs['%s_self-projection' % old_id] = clf.predict(X)
         
         if plot:
-            aucs = plot_roc(y_prob, y_test, clf, cvsm=cvsm, acc=acc)
+            aucs = plot_roc(y_prob, y_test, clf, cvsm=cvsm, acc=acc, title="Self-project ROC {}".format(old_id))
             if mplotlib_backend:
                 mplotlib_backend.savefig()
                 plt.clf()
@@ -998,6 +998,8 @@ def plot_heatmap_gray(X, title='', save=None, mplotlib_backend=None):
     cbaxes = fig.add_axes([1, 0.125, 0.08, 0.76])
     # 'cb = fig.colorbar(cax, cax = cbaxes, ticks=[])
     cb = fig.colorbar(cax, cax=cbaxes)
+    ax.set_xlabel("Cluster")
+    ax.set_ylabel("Cluster")
     if save:
         plt.savefig(save)
     elif mplotlib_backend:
