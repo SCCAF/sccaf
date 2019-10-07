@@ -771,7 +771,7 @@ def SCCAF_optimize(ad,
     if use == 'raw':
         X = ad.raw.X
     elif use == 'pca':
-        if 'X_pca' not in ad.obsm.dtype.fields:
+        if 'X_pca' not in ad.obsm.keys():
             raise ValueError("`adata.obsm['X_pca']` doesn't exist. Run `sc.pp.pca` first.")
         X = ad.obsm['X_pca']
     else:
