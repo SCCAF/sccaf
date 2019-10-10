@@ -29,7 +29,7 @@ parser.add_argument("-s", "--slot-for-existing-clustering",
                     help="Use clustering pre-computed in the input object, available in this slot of the object.")
 parser.add_argument("-r", "--resolution", default=1.5, type=float,
                     help="Resolution for running clustering when no internal or external clustering is given.")
-parser.add_argument("-a", "--min-accuracy", type=float,
+parser.add_argument("-a", "--min-accuracy", type=float, default=0.955,
                     help="Accuracy threshold for convergence of the optimisation procedure.")
 parser.add_argument("-p", "--prefix",
                     help="Prefix for clustering labels", default="L1")
@@ -42,6 +42,11 @@ parser.add_argument("--produce-rounds-summary", action="store_true",
                     help="Set to produce summary files for each round of optimisation"
                     )
 parser.add_argument("--optimisation-plots-output", help="PDF file output path for all optimisation plots.")
+parser.add_argument("--conf-sampling-iterations", action="store", type=int, default=3,
+                    help="How many samples are taken of cells per clusters prior to the confusion matrix calculation."
+                         "Higher numbers will produce more stable results in terms of rounds, but will take longer. "
+                         "Default: 3."
+                    )
 
 args = parser.parse_args()
 
@@ -105,13 +110,12 @@ if args.optimise:
         backend = PdfPages(args.optimisation_plots_output)
 
     if args.undercluster_boundary:
-        sf.SCCAF_optimize_all(min_acc=0.955, ad=ad, plot=plots, n_jobs=args.cores,
-                              low_res=args.undercluster_boundary, mplotlib_backend=backend)
+        sf.SCCAF_optimize_all(min_acc=args.min_accuracy, ad=ad, plot=plots, n_jobs=args.cores,
+                              low_res=args.undercluster_boundary, mplotlib_backend=backend, c_iter=args.conf_sampling_iterations)
     else:
         sf.SCCAF_optimize_all(min_acc=args.min_accuracy, ad=ad, plot=plots, n_jobs=args.cores,
-                              mplotlib_backend=backend)
+                              mplotlib_backend=backend, c_iter=args.conf_sampling_iterations)
     logging.info("Run optimise: DONE")
-    #sc.pl.scatter(ad, base=args.visualisation, color=)
     y_prob, y_pred, y_test, clf, cvsm, acc = sf.SCCAF_assessment(X, ad.obs['{}_result'.format(args.prefix)],
                                                                  n_jobs=args.cores)
     logging.info("Posterior assessment: DONE")
