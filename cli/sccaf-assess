@@ -2,7 +2,7 @@
 
 import pandas as pd
 import matplotlib
-import scanpy.api as sc
+import scanpy as sc
 import SCCAF as sf
 import logging
 import argparse
@@ -44,6 +44,11 @@ if args.external_clustering_tsv:
     y = (pd.merge(ad.obs, cluster, how='left', left_index=True, right_index=True))['CLUSTER']
     column_name = "external_clustering"
 else:
+    if args.slot_for_existing_clustering not in ad.obs:
+        logging.error("Provided slot name '{}' is not in the provided AnnData object, "
+                      "make sure that you provide a valid clustering label inside the "
+                      "AnnData object provided.".format(args.slot_for_existing_clustering))
+        exit(1)
     y = ad.obs[args.slot_for_existing_clustering]
     column_name = args.slot_for_existing_clustering
 accs_out_fn = "{}.csv".format(column_name)
