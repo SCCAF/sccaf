@@ -771,7 +771,7 @@ def SCCAF_optimize(ad,
     if use == 'raw':
         X = ad.raw.X
     elif use == 'pca':
-        if 'X_pca' not in ad.obsm.dtype.fields:
+        if 'X_pca' not in ad.obsm.keys():
             raise ValueError("`adata.obsm['X_pca']` doesn't exist. Run `sc.pp.pca` first.")
         X = ad.obsm['X_pca']
     else:
@@ -1008,13 +1008,31 @@ def plot_heatmap_gray(X, title='', save=None, mplotlib_backend=None):
         plt.show()
 
 
-def plot_roc(y_prob, y_test, clf, plot=True, save=None, title='', colors=None, cvsm=None, acc=None, fontsize=16):
+def plot_roc(y_prob, y_test, clf, plot='both', save=None, title='', colors=None, cvsm=None, acc=None, fontsize=16):
     """
     y_prob, y_test, clf, plot=True, save=False, title ='', colors=None, cvsm=None, acc=None, fontsize=16):
     """
-    aucs = []
-    if plot:
-        plt.figure()
+    aucs = [] #AUC
+    fprs = [] #FPR
+    tprs = [] #TPR
+    prss = [] #Precision
+    recs = [] #Recall
+    for i, cell_type in enumerate(clf.classes_):
+        fpr, tpr, _ = metrics.roc_curve(y_test == cell_type, y_prob[:, i])
+        prs, rec, _ = metrics.precision_recall_curve(y_test == cell_type, y_prob[:, i])
+        fprs.append(fpr)
+        tprs.append(tpr)
+        prss.append(prs)
+        recs.append(rec)
+        auc = metrics.auc(fpr, tpr)
+        aucs.append(auc)
+    
+    good_aucs = np.asarray(aucs)
+    good_aucs = good_aucs[~np.isnan(good_aucs)]
+    min_auc = np.min(good_aucs)
+    max_auc = np.max(good_aucs)
+    
+    if plot in ['both','roc','prc']:
         if colors is None:
             if len(clf.classes_) < 21:
                 colors = default_20
@@ -1022,32 +1040,66 @@ def plot_roc(y_prob, y_test, clf, plot=True, save=None, title='', colors=None, c
                 colors = default_26
             else:
                 colors = default_64
-    for i, cell_type in enumerate(clf.classes_):
-        fpr, tpr, _ = metrics.roc_curve(y_test == cell_type, y_prob[:, i])
-        auc = metrics.auc(fpr, tpr)
-        aucs.append(auc)
-        if plot:
-            plt.plot(fpr, tpr, c=colors[i], lw=2, label=cell_type)
-    good_aucs = np.asarray(aucs)
-    good_aucs = good_aucs[~np.isnan(good_aucs)]
-    min_auc = np.min(good_aucs)
-    max_auc = np.max(good_aucs)
-    if plot:
-        plt.plot([0, 1], [0, 1], color='k', ls=':')  # random
-        plt.xlabel('FPR')
-        plt.ylabel('TPR')
-        # 'plt.title(r'%s $AUC_{min}: %.3f \ AUC_{max}: %.3f$'%(title, min_auc,max_auc))
-        plt.title(title)
-        plt.xticks([0, 1])
-        plt.yticks([0, 1])
-        plt.annotate(r'$AUC_{min}: %.3f$' % min_auc, (0.5, 0.4), fontsize=fontsize)
-        plt.annotate(r'$AUC_{max}: %.3f$' % max_auc, (0.5, 0.3), fontsize=fontsize)
-        if cvsm:
-            plt.annotate("CV: %.3f" % cvsm, (0.5, 0.2), fontsize=fontsize)
-        if acc:
-            plt.annotate("Test: %.3f" % acc, (0.5, 0.1), fontsize=fontsize)
+        if plot == 'both':
+            
+            fig, ax = plt.subplots(1, 2, sharey=True)
+            ax[0].plot([0, 1], [0, 1], color='k', ls=':')
+            ax[0].set_xticks([0, 1])
+            ax[0].set_yticks([0, 1])
+            ax[1].plot([0, 1], [1, 0], color='k', ls=':')
+            ax[1].set_xticks([0, 1])
+            ax[1].set_yticks([0, 1])
+            Xs = fprs
+            Ys = tprs
+            for i, cell_type in enumerate(clf.classes_):
+                ax[0].plot(Xs[i], Ys[i], c=colors[i], lw=2, label=cell_type)
+            ax[0].set_xlabel('FPR')
+            ax[0].set_ylabel('TPR')
+            Xs = recs
+            Ys = prss
+            for i, cell_type in enumerate(clf.classes_):
+                ax[1].plot(Xs[i], Ys[i], c=colors[i], lw=2, label=cell_type)
+            ax[1].set_xlabel('Recall')
+            ax[1].set_ylabel('Precision')
+            
+            ax[0].annotate(r'$AUC_{min}: %.3f$' % min_auc, (0.5, 0.4), fontsize=fontsize)
+            ax[0].annotate(r'$AUC_{max}: %.3f$' % max_auc, (0.5, 0.3), fontsize=fontsize)
+            if cvsm:
+                ax[0].annotate("CV: %.3f" % cvsm, (0.5, 0.2), fontsize=fontsize)
+            if acc:
+                ax[0].annotate("Test: %.3f" % acc, (0.5, 0.1), fontsize=fontsize)
+            
+        else:
+            fig, ax = plt.subplots()
+            ax.set_xticks([0, 1])
+            ax.set_yticks([0, 1])
+            if plot == 'roc':
+                Xs = fprs
+                Ys = tprs
+                ax.set_xlabel('FPR')
+                ax.set_ylabel('TPR')
+                ax.plot([0, 1], [0, 1], color='k', ls=':')
+                pos = 0.5
+            else:
+                Xs = recs
+                Ys = prss
+                ax.set_xlabel('Recall')
+                ax.set_ylabel('Precision')
+                ax.plot([0, 1], [1, 0], color='k', ls=':')
+                pos = 0
+            for i, cell_type in enumerate(clf.classes_):
+                ax.plot(Xs[i], Ys[i], c=colors[i], lw=2, label=cell_type)
+                
+            ax.annotate(r'$AUC_{min}: %.3f$' % min_auc, (pos, 0.4), fontsize=fontsize)
+            ax.annotate(r'$AUC_{max}: %.3f$' % max_auc, (pos, 0.3), fontsize=fontsize)
+            if cvsm:
+                ax.annotate("CV: %.3f" % cvsm, (pos, 0.2), fontsize=fontsize)
+            if acc:
+                ax.annotate("Test: %.3f" % acc, (pos, 0.1), fontsize=fontsize)
+
         if save:
             plt.savefig(save)
+        
     return aucs
 
 
