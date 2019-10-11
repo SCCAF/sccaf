@@ -186,4 +186,4 @@ sccaf-assess-merger -i results -r rounds.txt -o rounds-acc-comparison-plot.png
 ```
 
 This will produce a result like this:
-![plot](img/sccaf_assesment_accuracies.png)
+![plot](https://user-images.githubusercontent.com/368478/66618625-a6c2fe80-ebd1-11e9-8355-ea762097c604.png)
