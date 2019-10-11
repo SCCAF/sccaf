@@ -3,7 +3,7 @@
 import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
-import scanpy.api as sc
+import scanpy as sc
 import SCCAF as sf
 import logging
 import argparse
@@ -11,6 +11,15 @@ from re import sub, match
 from sys import exit
 
 matplotlib.use('Agg')
+
+
+def non_empty_string(x):
+    if x is not None and len(x) > 0:
+        return x
+    else:
+        msg = "Value provided cannot be empty"
+        raise argparse.ArgumentTypeError(msg)
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-i", "--input-file",
@@ -26,10 +35,11 @@ parser.add_argument("--skip-assessment", action="store_true",
                     help="If --optimise given, then this allows to optionally skip the original "
                          "assessment of the clustering")
 parser.add_argument("-s", "--slot-for-existing-clustering",
-                    help="Use clustering pre-computed in the input object, available in this slot of the object.")
+                    help="Use clustering pre-computed in the input object, available in this slot of the object.",
+                    type=non_empty_string)
 parser.add_argument("-r", "--resolution", default=1.5, type=float,
                     help="Resolution for running clustering when no internal or external clustering is given.")
-parser.add_argument("-a", "--min-accuracy", type=float,
+parser.add_argument("-a", "--min-accuracy", type=float, default=0.955,
                     help="Accuracy threshold for convergence of the optimisation procedure.")
 parser.add_argument("-p", "--prefix",
                     help="Prefix for clustering labels", default="L1")
@@ -42,6 +52,11 @@ parser.add_argument("--produce-rounds-summary", action="store_true",
                     help="Set to produce summary files for each round of optimisation"
                     )
 parser.add_argument("--optimisation-plots-output", help="PDF file output path for all optimisation plots.")
+parser.add_argument("--conf-sampling-iterations", action="store", type=int, default=3,
+                    help="How many samples are taken of cells per clusters prior to the confusion matrix calculation."
+                         "Higher numbers will produce more stable results in terms of rounds, but will take longer. "
+                         "Default: 3."
+                    )
 
 args = parser.parse_args()
 
@@ -60,6 +75,11 @@ if args.external_clustering_tsv:
     cluster.columns = ['CLUSTER']
     y = (pd.merge(ad.obs, cluster, how='left', left_index=True, right_index=True))['CLUSTER']
 else:
+    if args.slot_for_existing_clustering not in ad.obs:
+        logging.error("Provided slot name '{}' is not in the provided AnnData object, "
+                      "make sure that you provide a valid clustering label inside the "
+                      "AnnData object provided.".format(args.slot_for_existing_clustering))
+        exit(1)
     y = ad.obs[args.slot_for_existing_clustering]
 
 raw = getattr(ad, 'raw')
@@ -105,13 +125,12 @@ if args.optimise:
         backend = PdfPages(args.optimisation_plots_output)
 
     if args.undercluster_boundary:
-        sf.SCCAF_optimize_all(min_acc=0.955, ad=ad, plot=plots, n_jobs=args.cores,
-                              low_res=args.undercluster_boundary, mplotlib_backend=backend)
+        sf.SCCAF_optimize_all(min_acc=args.min_accuracy, ad=ad, plot=plots, n_jobs=args.cores,
+                              low_res=args.undercluster_boundary, mplotlib_backend=backend, c_iter=args.conf_sampling_iterations)
     else:
         sf.SCCAF_optimize_all(min_acc=args.min_accuracy, ad=ad, plot=plots, n_jobs=args.cores,
-                              mplotlib_backend=backend)
+                              mplotlib_backend=backend, c_iter=args.conf_sampling_iterations)
     logging.info("Run optimise: DONE")
-    #sc.pl.scatter(ad, base=args.visualisation, color=)
     y_prob, y_pred, y_test, clf, cvsm, acc = sf.SCCAF_assessment(X, ad.obs['{}_result'.format(args.prefix)],
                                                                  n_jobs=args.cores)
     logging.info("Posterior assessment: DONE")

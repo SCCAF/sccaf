@@ -57,7 +57,7 @@ docker pull quay.io/biocontainers/sccaf:<tag>
 **Note:** Biocontainer's containers do not have a latest tag, as such a docker pull/run without defining the tag will fail. For instance, a valid call would be (for version 0.0.3):
 
 ```
-docker run -it quay.io/biocontainers/sccaf:0.0.3--py_0
+docker run -it quay.io/biocontainers/sccaf:0.0.7--py_0
 ```
 
 Inside the container, you can either use the Python interactive shell or the command line version (see below).
@@ -186,4 +186,4 @@ sccaf-assess-merger -i results -r rounds.txt -o rounds-acc-comparison-plot.png
 ```
 
 This will produce a result like this:
-![plot](img/sccaf_assesment_accuracies.png)
+![plot](https://user-images.githubusercontent.com/368478/66618625-a6c2fe80-ebd1-11e9-8355-ea762097c604.png)
