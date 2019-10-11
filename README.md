@@ -57,7 +57,7 @@ docker pull quay.io/biocontainers/sccaf:<tag>
 **Note:** Biocontainer's containers do not have a latest tag, as such a docker pull/run without defining the tag will fail. For instance, a valid call would be (for version 0.0.3):
 
 ```
-docker run -it quay.io/biocontainers/sccaf:0.0.3--py_0
+docker run -it quay.io/biocontainers/sccaf:0.0.7--py_0
 ```
 
 Inside the container, you can either use the Python interactive shell or the command line version (see below).
