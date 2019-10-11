@@ -1041,7 +1041,7 @@ def plot_roc(y_prob, y_test, clf, plot='both', save=None, title='', colors=None,
             else:
                 colors = default_64
         if plot == 'both':
-            
+            fontsize = 12
             fig, ax = plt.subplots(1, 2, sharey=True)
             ax[0].plot([0, 1], [0, 1], color='k', ls=':')
             ax[0].set_xticks([0, 1])
@@ -1062,12 +1062,12 @@ def plot_roc(y_prob, y_test, clf, plot='both', save=None, title='', colors=None,
             ax[1].set_xlabel('Recall')
             ax[1].set_ylabel('Precision')
             
-            ax[0].annotate(r'$AUC_{min}: %.3f$' % min_auc, (0.5, 0.4), fontsize=fontsize)
-            ax[0].annotate(r'$AUC_{max}: %.3f$' % max_auc, (0.5, 0.3), fontsize=fontsize)
+            ax[0].annotate(r'$AUC_{min}: %.3f$' % min_auc, (0.4, 0.4), fontsize=fontsize)
+            ax[0].annotate(r'$AUC_{max}: %.3f$' % max_auc, (0.4, 0.3), fontsize=fontsize)
             if cvsm:
-                ax[0].annotate("CV: %.3f" % cvsm, (0.5, 0.2), fontsize=fontsize)
+                ax[0].annotate("CV: %.3f" % cvsm, (0.4, 0.2), fontsize=fontsize)
             if acc:
-                ax[0].annotate("Test: %.3f" % acc, (0.5, 0.1), fontsize=fontsize)
+                ax[0].annotate("Test: %.3f" % acc, (0.4, 0.1), fontsize=fontsize)
             
         else:
             fig, ax = plt.subplots()
