@@ -114,7 +114,10 @@ Higher accuracy indicate better discrimination. And the ROC curve shows the prob
 
 ## Optimize an over-clustering
 
-Given an over-clustered result, SCCAF optimize the clustering by merging the cell clusters that cannot be discriminated by machine learning:
+Given an over-clustered result, SCCAF optimize the clustering by merging the cell clusters that cannot be discriminated by machine learning. 
+
+### the selection of start clustering 
+The selection of start clustering (or pre-clustering, which is an over-clustering) aims to find a clustering with only over-clustering but no under-clustering. To achieve this clustering, we suggest to combine well-established clustering (e.g., louvain clustering in SCANPY or K-means or SC3) with data visualization (tSNE). We can assume that all the discriminative cell clusters should be detectable in the tSNE plot. Then, we can find a clustering (e.g, louvain with a chosen resolution, 1.5 in the example case) that separates all the "cell islands" in the tSNE plot. To achieve a higher speed, we also suggest to have as few cell cluster as possible. For example, if both resolution 1.5 and resolution 2.0 do not include under-clustering, we suggest to use resolution 1.5 result as the start clustering. 
 
 ```python
 
