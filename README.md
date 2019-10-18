@@ -141,9 +141,9 @@ Within the anndata object, assignments of cells to clusters will be left in `ada
 
 # Notebook demo
 
-You can find some demonstrative Jupyter Notebooks [here](notebook):
+You can find some demonstrative Jupyter Notebooks [here](https://github.com/SCCAF/sccaf/blob/develop/notebook/):
 
-- [Zeisel Mouse Cortex Demo](notebook/Zeisel_Mouse_Cortex_Demo.ipynb)
+- [Zeisel Mouse Cortex Demo](https://github.com/SCCAF/sccaf/blob/develop/notebook/Zeisel_Mouse_Cortex_Demo.ipynb)
     - Expected execution time on a 16 GB RAM standard laptop: ~15 minutes
 
 # Usage from the command line
