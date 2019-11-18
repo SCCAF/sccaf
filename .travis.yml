@@ -19,4 +19,4 @@ script:
   - test -f results/sccaf_assess_3.txt && test -f results/sccaf_assess_4.txt
   - sccaf-assess-merger -i ./results -r rounds.txt -o report_merge.pdf
   - test -f report_merge.pdf
-  - sccaf-regress-out -i Zeisel_reg.h5 -k 'group #,well' -o regressed.out
+  - sccaf-regress-out -i Zeisel_reg.h5 -k 'sex,well' -o regressed.out
