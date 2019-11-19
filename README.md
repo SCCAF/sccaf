@@ -54,10 +54,10 @@ You can use the SCCAF tool already setup on a Docker container. You need to choo
 docker pull quay.io/biocontainers/sccaf:<tag>
 ```
 
-**Note:** Biocontainer's containers do not have a latest tag, as such a docker pull/run without defining the tag will fail. For instance, a valid call would be (for version 0.0.3):
+**Note:** Biocontainer's containers do not have a latest tag, as such a docker pull/run without defining the tag will fail. For instance, a valid call would be (for version 0.0.8):
 
 ```
-docker run -it quay.io/biocontainers/sccaf:0.0.7--py_0
+docker run -it quay.io/biocontainers/sccaf:0.0.8--py_0
 ```
 
 Inside the container, you can either use the Python interactive shell or the command line version (see below).
@@ -114,7 +114,11 @@ Higher accuracy indicate better discrimination. And the ROC curve shows the prob
 
 ## Optimize an over-clustering
 
-Given an over-clustered result, SCCAF optimize the clustering by merging the cell clusters that cannot be discriminated by machine learning:
+Given an over-clustered result, SCCAF optimize the clustering by merging the cell clusters that cannot be discriminated by machine learning. 
+
+### Selecting the starting clustering
+
+The selection of start clustering (or pre-clustering, which is an over-clustering) aims to find a clustering with only over-clustering but no under-clustering. To achieve this clustering, we suggest to combine well-established clustering (e.g., louvain clustering in SCANPY or K-means or SC3) with data visualization (tSNE). We can assume that all the discriminative cell clusters should be detectable in the tSNE plot. Then, we can find a clustering (e.g, louvain with a chosen resolution, 1.5 in the example case) that separates all the "cell islands" in the tSNE plot. To achieve a higher speed, we also suggest to have as few cell cluster as possible. For example, if both resolution 1.5 and resolution 2.0 do not include under-clustering, we suggest to use resolution 1.5 result as the start clustering.
 
 ```python
 
@@ -138,9 +142,9 @@ Within the anndata object, assignments of cells to clusters will be left in `ada
 
 # Notebook demo
 
-You can find some demonstrative Jupyter Notebooks [here](notebook):
+You can find some demonstrative Jupyter Notebooks [here](https://github.com/SCCAF/sccaf/blob/develop/notebook/):
 
-- [Zeisel Mouse Cortex Demo](notebook/Zeisel_Mouse_Cortex_Demo.ipynb)
+- [Zeisel Mouse Cortex Demo](https://github.com/SCCAF/sccaf/blob/develop/notebook/Zeisel_Mouse_Cortex_Demo.ipynb)
     - Expected execution time on a 16 GB RAM standard laptop: ~15 minutes
 
 # Usage from the command line
