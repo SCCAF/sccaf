@@ -1,0 +1,37 @@
+#!/usr/bin/env python
+
+import SCCAF as sf
+import scanpy as sc
+import argparse
+import logging
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-i", "--input-file",
+                    help="Path to input in AnnData or Loom", required=True)
+parser.add_argument("-o", "--output-file", required=True,
+                    help="Path for output file for annData with regression done.")
+parser.add_argument('-k', "--keys-to-regress", required=True,
+                    help="Keys to regress out, comma separated. They should be in the anndata object."
+                    )
+
+args = parser.parse_args()
+
+if len(args.keys_to_regress) == 0:
+    logging.error("--keys-to-regress value cannot be empty")
+    exit(1)
+
+keys_to_regress = [k.strip() for k in str(args.keys_to_regress).split(sep=",")]
+
+if len(keys_to_regress) == 0:
+    logging.error("Comma separated list of keys contains no keys")
+    exit(1)
+
+ad = sc.read(args.input_file)
+
+for k in keys_to_regress:
+    if k not in ad.obs:
+        logging.error("Variable {} is not in the annData object".format(k))
+        exit(1)
+
+sf.sc_pp_regress_out(ad, keys=keys_to_regress)
+ad.write(args.output_file, compression='gzip')

@@ -1375,7 +1375,7 @@ def sc_pp_regress_out(adata, keys, n_jobs=None, copy=False):
     -------
     Depening on `copy` returns or updates `adata` with the corrected data matrix.
     """
-    logg.info('regressing out', keys, r=True)
+    logg.info('regressing out'.format(tuple(keys) if type(keys) is list else keys))
     if issparse(adata.X):
         logg.info('... sparse input is densified and may '
                   'lead to huge memory consumption')
@@ -1453,7 +1453,7 @@ def sc_pp_regress_out(adata, keys, n_jobs=None, copy=False):
             col_index, adata.X, regressors) for col_index in chunk]
         for i_column, column in enumerate(chunk):
             adata.X[:, column] = result_lst[i_column]
-    logg.info('finished', t=True)
+    logg.info('finished')
     logg.hint('after `sc.pp.regress_out`, consider rescaling the adata using `sc.pp.scale`')
     return adata if copy else None
 
