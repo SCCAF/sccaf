@@ -26,11 +26,9 @@ from pandas.api.types import is_categorical_dtype
 from collections import defaultdict
 import louvain
 import scipy
-import os
 import seaborn as sns
 import patsy
 
-#'from anndata import AnnData
 from scanpy import settings as sett
 from scanpy import logging as logg
 
@@ -1384,7 +1382,7 @@ def sc_pp_regress_out(adata, keys, n_jobs=None, copy=False):
     if issparse(adata.X):
         adata.X = adata.X.toarray()
     if n_jobs is not None:
-        logg.warn('Parallelization is currently broke, will be restored soon. Running on 1 core.')
+        logg.warning('Parallelization is currently broke, will be restored soon. Running on 1 core.')
     n_jobs = sett.n_jobs if n_jobs is None else n_jobs
 
     cat_keys = []
@@ -1406,7 +1404,7 @@ def sc_pp_regress_out(adata, keys, n_jobs=None, copy=False):
     if cat_regressors is None:
         regressors = var_regressors
         if regressors is None:
-            logg.warn('No correct key provided. Data not regressed out.')
+            logg.warning('No correct key provided. Data not regressed out.')
             return adata
     else:
         if var_regressors is None:
@@ -1433,7 +1431,7 @@ def sc_pp_regress_out(adata, keys, n_jobs=None, copy=False):
                             regressors_view, family=sm.families.Gaussian()).fit()
             new_column = result.resid_response
         except PerfectSeparationError:  # this emulates R's behavior
-            logg.warn('Encountered PerfectSeparationError, setting to 0 as in R.')
+            logg.warning('Encountered PerfectSeparationError, setting to 0 as in R.')
             new_column = np.zeros(responses.shape[0])
         return new_column
 
