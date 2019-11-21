@@ -54,10 +54,10 @@ You can use the SCCAF tool already setup on a Docker container. You need to choo
 docker pull quay.io/biocontainers/sccaf:<tag>
 ```
 
-**Note:** Biocontainer's containers do not have a latest tag, as such a docker pull/run without defining the tag will fail. For instance, a valid call would be (for version 0.0.8):
+**Note:** Biocontainer's containers do not have a latest tag, as such a docker pull/run without defining the tag will fail. For instance, a valid call would be (for version 0.0.9):
 
 ```
-docker run -it quay.io/biocontainers/sccaf:0.0.8--py_0
+docker run -it quay.io/biocontainers/sccaf:0.0.9--py_0
 ```
 
 Inside the container, you can either use the Python interactive shell or the command line version (see below).
