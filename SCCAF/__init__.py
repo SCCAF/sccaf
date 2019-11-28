@@ -1021,7 +1021,8 @@ def plot_roc(y_prob, y_test, clf, plot='both', save=None, title='', colors=None,
     """
     y_prob, y_test, clf, plot=True, save=False, title ='', colors=None, cvsm=None, acc=None, fontsize=16):
     """
-    aucs = [] #AUC
+    rc_aucs = [] #AUC
+    rp_aucs = [] # AUC from recall precision
     fprs = [] #FPR
     tprs = [] #TPR
     prss = [] #Precision
@@ -1033,13 +1034,18 @@ def plot_roc(y_prob, y_test, clf, plot='both', save=None, title='', colors=None,
         tprs.append(tpr)
         prss.append(prs)
         recs.append(rec)
-        auc = metrics.auc(fpr, tpr)
-        aucs.append(auc)
+        rc_aucs.append(metrics.auc(fpr, tpr))
+        rp_aucs.append(metrics.auc(rec, prs))
     
-    good_aucs = np.asarray(aucs)
+    good_aucs = np.asarray(rc_aucs)
     good_aucs = good_aucs[~np.isnan(good_aucs)]
-    min_auc = np.min(good_aucs)
-    max_auc = np.max(good_aucs)
+    min_auc_rc = np.min(good_aucs)
+    max_auc_rc = np.max(good_aucs)
+    
+    good_aucs = np.asarray(rp_aucs)
+    good_aucs = good_aucs[~np.isnan(good_aucs)]
+    min_auc_rp = np.min(good_aucs)
+    max_auc_rp = np.max(good_aucs)
     
     if plot in ['both','roc','prc']:
         if colors is None:
@@ -1050,7 +1056,7 @@ def plot_roc(y_prob, y_test, clf, plot='both', save=None, title='', colors=None,
             else:
                 colors = default_64
         if plot == 'both':
-            fontsize = 12
+            
             fig, ax = plt.subplots(1, 2, sharey=True)
             ax[0].plot([0, 1], [0, 1], color='k', ls=':')
             ax[0].set_xticks([0, 1])
@@ -1071,12 +1077,16 @@ def plot_roc(y_prob, y_test, clf, plot='both', save=None, title='', colors=None,
             ax[1].set_xlabel('Recall')
             ax[1].set_ylabel('Precision')
             
-            ax[0].annotate(r'$AUC_{min}: %.3f$' % min_auc, (0.4, 0.4), fontsize=fontsize)
-            ax[0].annotate(r'$AUC_{max}: %.3f$' % max_auc, (0.4, 0.3), fontsize=fontsize)
+            ax[0].annotate(r'$AUC_{min}: %.3f$' % min_auc_rc, (0.5, 0.4), fontsize=fontsize)
+            ax[0].annotate(r'$AUC_{max}: %.3f$' % max_auc_rc, (0.5, 0.3), fontsize=fontsize)
+            ax[1].annotate(r'$AUC_{min}: %.3f$' % min_auc_rp, (0.5, 0.4), fontsize=fontsize)
+            ax[1].annotate(r'$AUC_{max}: %.3f$' % max_auc_rp, (0.5, 0.3), fontsize=fontsize)
             if cvsm:
-                ax[0].annotate("CV: %.3f" % cvsm, (0.4, 0.2), fontsize=fontsize)
+                ax[0].annotate("CV: %.3f" % cvsm, (0.5, 0.2), fontsize=fontsize)
+                ax[1].annotate("CV: %.3f" % cvsm, (0.5, 0.2), fontsize=fontsize)
             if acc:
-                ax[0].annotate("Test: %.3f" % acc, (0.4, 0.1), fontsize=fontsize)
+                ax[0].annotate("Test: %.3f" % acc, (0.5, 0.1), fontsize=fontsize)
+                ax[1].annotate("Test: %.3f" % acc, (0.5, 0.1), fontsize=fontsize)
             
         else:
             fig, ax = plt.subplots()
@@ -1089,6 +1099,8 @@ def plot_roc(y_prob, y_test, clf, plot='both', save=None, title='', colors=None,
                 ax.set_ylabel('TPR')
                 ax.plot([0, 1], [0, 1], color='k', ls=':')
                 pos = 0.5
+                ax.annotate(r'$AUC_{min}: %.3f$' % min_auc_rc, (pos, 0.4), fontsize=fontsize)
+                ax.annotate(r'$AUC_{max}: %.3f$' % max_auc_rc, (pos, 0.3), fontsize=fontsize)
             else:
                 Xs = recs
                 Ys = prss
@@ -1096,11 +1108,11 @@ def plot_roc(y_prob, y_test, clf, plot='both', save=None, title='', colors=None,
                 ax.set_ylabel('Precision')
                 ax.plot([0, 1], [1, 0], color='k', ls=':')
                 pos = 0
+                ax.annotate(r'$AUC_{min}: %.3f$' % min_auc_rp, (pos, 0.4), fontsize=fontsize)
+                ax.annotate(r'$AUC_{max}: %.3f$' % max_auc_rp, (pos, 0.3), fontsize=fontsize)
             for i, cell_type in enumerate(clf.classes_):
                 ax.plot(Xs[i], Ys[i], c=colors[i], lw=2, label=cell_type)
-                
-            ax.annotate(r'$AUC_{min}: %.3f$' % min_auc, (pos, 0.4), fontsize=fontsize)
-            ax.annotate(r'$AUC_{max}: %.3f$' % max_auc, (pos, 0.3), fontsize=fontsize)
+
             if cvsm:
                 ax.annotate("CV: %.3f" % cvsm, (pos, 0.2), fontsize=fontsize)
             if acc:
@@ -1109,7 +1121,7 @@ def plot_roc(y_prob, y_test, clf, plot='both', save=None, title='', colors=None,
         if save:
             plt.savefig(save)
         
-    return aucs
+    return rc_aucs
 
 
 ## pySankey
