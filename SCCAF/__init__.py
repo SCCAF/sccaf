@@ -604,6 +604,8 @@ def SCCAF_optimize_all(ad,
                        R2norm_step=0.001, 
                        prefix='L1',
                        min_i = 3,
+		       start = None,
+                       start_iter = 0,
                        *args, **kwargs):
     """
     ad: `AnnData`
@@ -628,12 +630,21 @@ def SCCAF_optimize_all(ad,
         The reduce step for minimum R2norm value.
     """
     acc = 0
-    start_iter = 0
+    #'start_iter = -1
+    if start is None:
+        start = '%s_Round%d'%(prefix, start_iter)
+        if not start in ad.obs.keys():
+            raise ValueError("`adata.obs['%s']` doesn't exist. Please assign the initial clustering first."%(start))
+    else:
+        if not start in ad.obs.keys():
+            raise ValueError("`adata.obs['%s']` doesn't exist. Please assign the initial clustering first."%(start))
+        ad.obs['%s_Round%d'%(prefix, start_iter)] = ad.obs[start]
     
     clstr_old = len(ad.obs['%s_Round%d'%(prefix, start_iter)].unique())
-
+    #'while acc < min_acc:
     for i in range(10):
-        print("start_iter: %d" % start_iter)
+        if start_iter >0:
+            print("start_iter: %d" % start_iter)
         print("R1norm_cutoff: %f" % R1norm_cutoff)
         print("R2norm_cutoff: %f" % R2norm_cutoff)
         print("Accuracy: %f" % acc)
