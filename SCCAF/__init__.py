@@ -270,6 +270,7 @@ def self_projection(X,
                     sparsity=0.5,
                     fraction=0.5,
                     random_state=1,
+		    solver='saga',
                     n=0,
                     cv=5,
                     whole=False, 
@@ -327,7 +328,7 @@ def self_projection(X,
                              stratify=cell_types, test_size=fraction)  # fraction means test size
     # set the classifier
     if classifier == 'LR':
-        clf = LogisticRegression(random_state=1, penalty=penalty, C=sparsity, multi_class="ovr", solver="liblinear")
+        clf = LogisticRegression(random_state=1, penalty=penalty, C=sparsity, multi_class="ovr", solver=solver)
     elif classifier == 'RF':
         clf = RandomForestClassifier(random_state=1, n_jobs=n_jobs)
     elif classifier == 'GNB':
@@ -1051,9 +1052,9 @@ def plot_roc(y_prob, y_test, clf, plot='both', save=None, title='', colors=None,
             if len(clf.classes_) < 21:
                 colors = default_20
             elif len(clf.classes_) < 27:
-                colors = default_26
+                colors = default_28
             else:
-                colors = default_64
+                colors = default_102
         if plot == 'both':
             
             fig, ax = plt.subplots(1, 2, sharey=True)
