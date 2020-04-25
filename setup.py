@@ -21,7 +21,7 @@ setup(
             'scikit-learn',
             'psutil',
             'scanpy==1.4.6'],
-        scripts=['cli/sccaf', 'cli/sccaf-assess', 'cli/sccaf-assess-merger'],
+        scripts=['cli/sccaf', 'cli/sccaf-assess', 'cli/sccaf-assess-merger', 'cli/sccaf-regress-out'],
         author='Chichau Miau',
         author_email='zmiao@ebi.ac.uk',
         license='MIT'
