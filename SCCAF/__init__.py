@@ -26,11 +26,9 @@ from pandas.api.types import is_categorical_dtype
 from collections import defaultdict
 import louvain
 import scipy
-import os
 import seaborn as sns
 import patsy
 
-#'from anndata import AnnData
 from scanpy import settings as sett
 from scanpy import logging as logg
 
@@ -1396,7 +1394,7 @@ def sc_pp_regress_out(adata, keys, n_jobs=None, copy=False):
     -------
     Depening on `copy` returns or updates `adata` with the corrected data matrix.
     """
-    logg.info('regressing out', keys, r=True)
+    logg.info('regressing out'.format(tuple(keys) if type(keys) is list else keys))
     if issparse(adata.X):
         logg.info('... sparse input is densified and may '
                   'lead to huge memory consumption')
@@ -1405,7 +1403,7 @@ def sc_pp_regress_out(adata, keys, n_jobs=None, copy=False):
     if issparse(adata.X):
         adata.X = adata.X.toarray()
     if n_jobs is not None:
-        logg.warn('Parallelization is currently broke, will be restored soon. Running on 1 core.')
+        logg.warning('Parallelization is currently broke, will be restored soon. Running on 1 core.')
     n_jobs = sett.n_jobs if n_jobs is None else n_jobs
 
     cat_keys = []
@@ -1427,7 +1425,7 @@ def sc_pp_regress_out(adata, keys, n_jobs=None, copy=False):
     if cat_regressors is None:
         regressors = var_regressors
         if regressors is None:
-            logg.warn('No correct key provided. Data not regressed out.')
+            logg.warning('No correct key provided. Data not regressed out.')
             return adata
     else:
         if var_regressors is None:
@@ -1454,7 +1452,7 @@ def sc_pp_regress_out(adata, keys, n_jobs=None, copy=False):
                             regressors_view, family=sm.families.Gaussian()).fit()
             new_column = result.resid_response
         except PerfectSeparationError:  # this emulates R's behavior
-            logg.warn('Encountered PerfectSeparationError, setting to 0 as in R.')
+            logg.warning('Encountered PerfectSeparationError, setting to 0 as in R.')
             new_column = np.zeros(responses.shape[0])
         return new_column
 
@@ -1474,7 +1472,7 @@ def sc_pp_regress_out(adata, keys, n_jobs=None, copy=False):
             col_index, adata.X, regressors) for col_index in chunk]
         for i_column, column in enumerate(chunk):
             adata.X[:, column] = result_lst[i_column]
-    logg.info('finished', t=True)
+    logg.info('finished')
     logg.hint('after `sc.pp.regress_out`, consider rescaling the adata using `sc.pp.scale`')
     return adata if copy else None
 
