@@ -193,7 +193,7 @@ def cluster_adjmat(xmat,
     -----
     new group names.
     """
-    g = sc.utils.get_igraph_from_adjacency((xmat > cutoff).astype(int), directed=False)
+    g = sc._utils.get_igraph_from_adjacency((xmat > cutoff).astype(int), directed=False)
     print(g)
     part = louvain.find_partition(g, louvain.RBConfigurationVertexPartition,
                                   resolution_parameter=resolution)
