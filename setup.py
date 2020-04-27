@@ -9,7 +9,7 @@ print(find_packages())
 
 setup(
         name='SCCAF',
-        version='0.0.9',
+        version='0.0.10',
         description='Single-Cell Clustering Assessment Framework',
         long_description=readme(),
         long_description_content_type='text/markdown',
