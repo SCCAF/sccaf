@@ -51,26 +51,23 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier, VotingClassifier
 from sklearn.svm import SVC
 
-color_long = ['#e6194b',
-              '#3cb44b',
-              '#ffe119',
-              '#0082c8',
-              '#f58231',
-              '#911eb4',
-              '#46f0f0',
-              '#f032e6',
-              '#d2f53c',
-              '#fabebe',
-              '#008080',
-              '#e6beff',
-              '#aa6e28',
-              '#800000',
-              '#aaffc3',
-              '#808000',
-              '#ffd8b1',
-              '#000080',
-              '#808080',
-              '#000000', ] + default_26
+color_long = ['#e6194b','#3cb44b','#ffe119','#0082c8','#f58231','#911eb4',\
+              '#46f0f0','#f032e6','#d2f53c','#fabebe','#008080','#e6beff',\
+              '#aa6e28','#800000','#aaffc3','#808000','#ffd8b1','#000080',\
+              '#808080','#000000', "#FFFF00", "#1CE6FF", "#FF34FF", "#FF4A46", \
+              "#008941", "#006FA6", "#A30059","#FFDBE5", "#7A4900", "#0000A6", \
+              "#63FFAC", "#B79762", "#004D43", "#8FB0FF", "#997D87","#5A0007", \
+              "#809693", "#6A3A4C", "#1B4400", "#4FC601", "#3B5DFF","#4A3B53", \
+              "#FF2F80","#61615A", "#BA0900", "#6B7900", "#00C2A0", "#FFAA92", "#FF90C9", "#B903AA", "#D16100",\
+              "#DDEFFF", "#000035", "#7B4F4B", "#A1C299", "#300018", "#0AA6D8", "#013349", "#00846F",\
+              "#372101", "#FFB500", "#C2FFED", "#A079BF", "#CC0744", "#C0B9B2", "#C2FF99", "#001E09",\
+              "#00489C", "#6F0062", "#0CBD66", "#EEC3FF", "#456D75", "#B77B68", "#7A87A1", "#788D66",\
+              "#885578", "#FAD09F", "#FF8A9A", "#D157A0", "#BEC459", "#456648", "#0086ED", "#886F4C",\
+              "#34362D", "#B4A8BD", "#00A6AA", "#452C2C", "#636375", "#A3C8C9", "#FF913F", "#938A81",\
+              "#575329", "#00FECF", "#B05B6F", "#8CD0FF", "#3B9700", "#04F757", "#C8A1A1", "#1E6E00",\
+              "#7900D7", "#A77500", "#6367A9", "#A05837", "#6B002C", "#772600", "#D790FF", "#9B9700",\
+              "#549E79", "#FFF69F", "#201625", "#72418F", "#BC23FF", "#99ADC0", "#3A2465", "#922329",\
+              "#5B4534", "#FDE8DC", "#404E55", "#0089A3", "#CB7E98", "#A4E804", "#324E72"]
 
 
 def run_BayesianGaussianMixture(Y, K):
@@ -196,7 +193,7 @@ def cluster_adjmat(xmat,
     -----
     new group names.
     """
-    g = sc.utils.get_igraph_from_adjacency((xmat > cutoff).astype(int), directed=False)
+    g = sc._utils.get_igraph_from_adjacency((xmat > cutoff).astype(int), directed=False)
     print(g)
     part = louvain.find_partition(g, louvain.RBConfigurationVertexPartition,
                                   resolution_parameter=resolution)
@@ -271,6 +268,7 @@ def self_projection(X,
                     sparsity=0.5,
                     fraction=0.5,
                     random_state=1,
+		    solver='liblinear',
                     n=0,
                     cv=5,
                     whole=False, 
@@ -328,7 +326,7 @@ def self_projection(X,
                              stratify=cell_types, test_size=fraction)  # fraction means test size
     # set the classifier
     if classifier == 'LR':
-        clf = LogisticRegression(random_state=1, penalty=penalty, C=sparsity, multi_class="ovr", solver="liblinear")
+        clf = LogisticRegression(random_state=1, penalty=penalty, C=sparsity, multi_class="ovr", solver=solver)
     elif classifier == 'RF':
         clf = RandomForestClassifier(random_state=1, n_jobs=n_jobs)
     elif classifier == 'GNB':
@@ -602,6 +600,8 @@ def SCCAF_optimize_all(ad,
                        R2norm_step=0.001, 
                        prefix='L1',
                        min_i = 3,
+		       start = None,
+                       start_iter = 0,
                        *args, **kwargs):
     """
     ad: `AnnData`
@@ -626,12 +626,21 @@ def SCCAF_optimize_all(ad,
         The reduce step for minimum R2norm value.
     """
     acc = 0
-    start_iter = 0
+    #'start_iter = -1
+    if start is None:
+        start = '%s_Round%d'%(prefix, start_iter)
+        if not start in ad.obs.keys():
+            raise ValueError("`adata.obs['%s']` doesn't exist. Please assign the initial clustering first."%(start))
+    else:
+        if not start in ad.obs.keys():
+            raise ValueError("`adata.obs['%s']` doesn't exist. Please assign the initial clustering first."%(start))
+        ad.obs['%s_Round%d'%(prefix, start_iter)] = ad.obs[start]
     
     clstr_old = len(ad.obs['%s_Round%d'%(prefix, start_iter)].unique())
-
+    #'while acc < min_acc:
     for i in range(10):
-        print("start_iter: %d" % start_iter)
+        if start_iter >0:
+            print("start_iter: %d" % start_iter)
         print("R1norm_cutoff: %f" % R1norm_cutoff)
         print("R2norm_cutoff: %f" % R2norm_cutoff)
         print("Accuracy: %f" % acc)
@@ -1010,7 +1019,8 @@ def plot_roc(y_prob, y_test, clf, plot='both', save=None, title='', colors=None,
     """
     y_prob, y_test, clf, plot=True, save=False, title ='', colors=None, cvsm=None, acc=None, fontsize=16):
     """
-    aucs = [] #AUC
+    rc_aucs = [] #AUC
+    rp_aucs = [] # AUC from recall precision
     fprs = [] #FPR
     tprs = [] #TPR
     prss = [] #Precision
@@ -1022,24 +1032,29 @@ def plot_roc(y_prob, y_test, clf, plot='both', save=None, title='', colors=None,
         tprs.append(tpr)
         prss.append(prs)
         recs.append(rec)
-        auc = metrics.auc(fpr, tpr)
-        aucs.append(auc)
+        rc_aucs.append(metrics.auc(fpr, tpr))
+        rp_aucs.append(metrics.auc(rec, prs))
     
-    good_aucs = np.asarray(aucs)
+    good_aucs = np.asarray(rc_aucs)
     good_aucs = good_aucs[~np.isnan(good_aucs)]
-    min_auc = np.min(good_aucs)
-    max_auc = np.max(good_aucs)
+    min_auc_rc = np.min(good_aucs)
+    max_auc_rc = np.max(good_aucs)
+    
+    good_aucs = np.asarray(rp_aucs)
+    good_aucs = good_aucs[~np.isnan(good_aucs)]
+    min_auc_rp = np.min(good_aucs)
+    max_auc_rp = np.max(good_aucs)
     
     if plot in ['both','roc','prc']:
         if colors is None:
             if len(clf.classes_) < 21:
                 colors = default_20
             elif len(clf.classes_) < 27:
-                colors = default_26
+                colors = default_28
             else:
-                colors = default_64
+                colors = default_102
         if plot == 'both':
-            fontsize = 12
+            
             fig, ax = plt.subplots(1, 2, sharey=True)
             ax[0].plot([0, 1], [0, 1], color='k', ls=':')
             ax[0].set_xticks([0, 1])
@@ -1060,12 +1075,16 @@ def plot_roc(y_prob, y_test, clf, plot='both', save=None, title='', colors=None,
             ax[1].set_xlabel('Recall')
             ax[1].set_ylabel('Precision')
             
-            ax[0].annotate(r'$AUC_{min}: %.3f$' % min_auc, (0.4, 0.4), fontsize=fontsize)
-            ax[0].annotate(r'$AUC_{max}: %.3f$' % max_auc, (0.4, 0.3), fontsize=fontsize)
+            ax[0].annotate(r'$AUC_{min}: %.3f$' % min_auc_rc, (0.5, 0.4), fontsize=fontsize)
+            ax[0].annotate(r'$AUC_{max}: %.3f$' % max_auc_rc, (0.5, 0.3), fontsize=fontsize)
+            ax[1].annotate(r'$AUC_{min}: %.3f$' % min_auc_rp, (0.5, 0.4), fontsize=fontsize)
+            ax[1].annotate(r'$AUC_{max}: %.3f$' % max_auc_rp, (0.5, 0.3), fontsize=fontsize)
             if cvsm:
-                ax[0].annotate("CV: %.3f" % cvsm, (0.4, 0.2), fontsize=fontsize)
+                ax[0].annotate("CV: %.3f" % cvsm, (0.5, 0.2), fontsize=fontsize)
+                ax[1].annotate("CV: %.3f" % cvsm, (0.5, 0.2), fontsize=fontsize)
             if acc:
-                ax[0].annotate("Test: %.3f" % acc, (0.4, 0.1), fontsize=fontsize)
+                ax[0].annotate("Test: %.3f" % acc, (0.5, 0.1), fontsize=fontsize)
+                ax[1].annotate("Test: %.3f" % acc, (0.5, 0.1), fontsize=fontsize)
             
         else:
             fig, ax = plt.subplots()
@@ -1078,6 +1097,8 @@ def plot_roc(y_prob, y_test, clf, plot='both', save=None, title='', colors=None,
                 ax.set_ylabel('TPR')
                 ax.plot([0, 1], [0, 1], color='k', ls=':')
                 pos = 0.5
+                ax.annotate(r'$AUC_{min}: %.3f$' % min_auc_rc, (pos, 0.4), fontsize=fontsize)
+                ax.annotate(r'$AUC_{max}: %.3f$' % max_auc_rc, (pos, 0.3), fontsize=fontsize)
             else:
                 Xs = recs
                 Ys = prss
@@ -1085,11 +1106,11 @@ def plot_roc(y_prob, y_test, clf, plot='both', save=None, title='', colors=None,
                 ax.set_ylabel('Precision')
                 ax.plot([0, 1], [1, 0], color='k', ls=':')
                 pos = 0
+                ax.annotate(r'$AUC_{min}: %.3f$' % min_auc_rp, (pos, 0.4), fontsize=fontsize)
+                ax.annotate(r'$AUC_{max}: %.3f$' % max_auc_rp, (pos, 0.3), fontsize=fontsize)
             for i, cell_type in enumerate(clf.classes_):
                 ax.plot(Xs[i], Ys[i], c=colors[i], lw=2, label=cell_type)
-                
-            ax.annotate(r'$AUC_{min}: %.3f$' % min_auc, (pos, 0.4), fontsize=fontsize)
-            ax.annotate(r'$AUC_{max}: %.3f$' % max_auc, (pos, 0.3), fontsize=fontsize)
+
             if cvsm:
                 ax.annotate("CV: %.3f" % cvsm, (pos, 0.2), fontsize=fontsize)
             if acc:
@@ -1098,7 +1119,7 @@ def plot_roc(y_prob, y_test, clf, plot='both', save=None, title='', colors=None,
         if save:
             plt.savefig(save)
         
-    return aucs
+    return rc_aucs
 
 
 ## pySankey
