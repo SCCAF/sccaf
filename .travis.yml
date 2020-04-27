@@ -4,19 +4,28 @@ python: 3.6
 
 
 install:
-  - pip install .
+- pip install .
 
 script:
-  - wget -O Zeisel_reg.h5 "https://drive.google.com/uc?export=download&id=1hprRFkEk8q27kqrt9RLvY6aqu6XWPb2C"
-  - sccaf -i Zeisel_reg.h5 --optimise --skip-assessment -o output.h5 -s louvain -a 0.89 --produce-rounds-summary
-  - echo "Checking if output file is present..."
-  - test -f output.h5 && echo "Output file exist"
-  - echo "Checking if rounds file is present..."
-  - test -f rounds.txt && echo "Rounds file exist"
-  - mkdir -p results
-  - sccaf-assess -i output.h5 -o results/sccaf_assess_3.txt --slot-for-existing-clustering L1_Round3 --iterations 6
-  - sccaf-assess -i output.h5 -o results/sccaf_assess_4.txt --slot-for-existing-clustering L1_Round4 --iterations 6
-  - test -f results/sccaf_assess_3.txt && test -f results/sccaf_assess_4.txt
-  - sccaf-assess-merger -i ./results -r rounds.txt -o report_merge.pdf
-  - test -f report_merge.pdf
-  - sccaf-regress-out -i Zeisel_reg.h5 -k 'sex,well' -o regressed.h5ad
+- wget -O Zeisel_reg.h5 "https://drive.google.com/uc?export=download&id=1hprRFkEk8q27kqrt9RLvY6aqu6XWPb2C"
+- sccaf -i Zeisel_reg.h5 --optimise --skip-assessment -o output.h5 -s louvain -a 0.89 --produce-rounds-summary
+- echo "Checking if output file is present..."
+- test -f output.h5 && echo "Output file exist"
+- echo "Checking if rounds file is present..."
+- test -f rounds.txt && echo "Rounds file exist"
+- mkdir -p results
+- sccaf-assess -i output.h5 -o results/sccaf_assess_3.txt --slot-for-existing-clustering L1_Round3 --iterations 6
+- sccaf-assess -i output.h5 -o results/sccaf_assess_4.txt --slot-for-existing-clustering L1_Round4 --iterations 6
+- test -f results/sccaf_assess_3.txt && test -f results/sccaf_assess_4.txt
+- sccaf-assess-merger -i ./results -r rounds.txt -o report_merge.pdf
+- test -f report_merge.pdf
+- sccaf-regress-out -i Zeisel_reg.h5 -k 'sex,well' -o regressed.h5ad
+
+deploy:
+  provider: pypi
+  user: __token__
+  password:
+    secure: MJ2TuwCVj7I1Xd2yJehwZyGJkCuHCaY5B2Sye7QQPu2vkPfpeq5tkfgyTG9sTLT5tl9i+nmH7hegSess+5YtaglGG2JnXmDgjKmUOuTzQUv3VLZRYRyHrUXO9RM3v8UA2VQJQls3yXkletKC/GcYM91WDpgaNaIQ/VsbTdd6YWflAtNj+DSctZAIXA2ofwhhSoYGnXuZFkEZU9xV4jjKU32UkGSY4GagQNWilPafzS/hOR22XauSugsJTW/5jru/9p/e+ic3Md6TFbGZ7JtJWVhX1+2TRIb5QMI78mDD+njeD2bB7F4EnGZrPKWI2PMpIX/L0fxyDwb7jZ0NKLCsUAWr2U+Nk6mzYar69jzYxStYoOGdgQvQqWT83fHSVad6n02zdjj/1Kcp25Lg+lTJEHxZCKerQ46MirtaX320WaEIQxlK0CaB/DLFDBdBEWP6jUL8RzqZ+idhXFlHAPw9jy3gzfwoSj89oRfggGOJo2vVTwgGzU5UYOY9OhLMF2/Brp7+oO/7NCdjsVGS63I1dqOi3NOQ5wioLiSiDJC1f2gyBZ4MeRuX0+W0ZJ7h6p1+iNs3IFLaMIDOEIH7aT7oaxar5tZHd7PxjzIxBBTgMJMHqrLalaMzB3V1VhzskmwmaJ5W6nQnThUzoAXJjEPkQTZ2JybNcKhRaXYtbLXfVXE=
+  distributions: sdist bdist_wheel
+  on:
+    branch: master
