@@ -110,7 +110,7 @@ def extract_round_number(text):
 
 
 if args.optimise:
-    if args.resolution:
+    if args.slot_for_existing_clustering is None and args.external_clustering_tsv is None:
         sc.tl.louvain(ad, resolution=args.resolution, key_added='{}_Round0'.format(args.prefix))
         logging.info("Run louvain for starting point: DONE")
     else:
@@ -153,4 +153,3 @@ if args.optimise:
         backend.close()
 
     logging.info("Write output: DONE")
-
