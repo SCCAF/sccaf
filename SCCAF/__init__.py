@@ -1143,12 +1143,12 @@ def plot_roc(y_prob, y_test, clf, plot='both', save=None, title='', colors=None,
         max_auc = np.max(good_aucs)
         legend_x_pos = 0.5
         if is_roc_and_prc:
-            x = ax[j]
+            figx = ax[j]
         else:
-            x = ax
+            figx = ax
             if not is_roc:
                 legend_x_pos = 0
-        plot_roc_per_celltype(x, clf, pltyp,
+        plot_roc_per_celltype(figx, clf, pltyp,
             Xs, Ys, colors, fontsize,
             min_auc, max_auc, cvsm, acc, legend_x = legend_x_pos)
 
