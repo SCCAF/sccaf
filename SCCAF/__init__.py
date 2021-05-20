@@ -18,6 +18,7 @@
 #  MA 02110-1301, USA.
 #
 #
+DEBUG = False
 
 import pandas as pd
 import numpy as np
@@ -50,6 +51,10 @@ from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier, VotingClassifier
 from sklearn.svm import SVC
+
+if DEBUG:
+    import sys
+    from joblib import dump, load
 
 color_long = ['#e6194b','#3cb44b','#ffe119','#0082c8','#f58231','#911eb4',\
               '#46f0f0','#f032e6','#d2f53c','#fabebe','#008080','#e6beff',\
@@ -261,7 +266,7 @@ def SCCAF_assessment(*args, **kwargs):
 
 
 # need to check number of cells in each cluster of the training set.
-def self_projection(X, 
+def self_projection(X,
                     cell_types,
                     classifier="LR",
                     penalty='l1',
@@ -271,7 +276,7 @@ def self_projection(X,
 		    solver='liblinear',
                     n=0,
                     cv=5,
-                    whole=False, 
+                    whole=False,
                     n_jobs=None):
     # n = 100 should be good.
     """
@@ -315,6 +320,8 @@ def self_projection(X,
     y_test: `list of string/int`
         real clustering of the test set
     clf: the classifier model.
+    cvsm: cross_validation mean of accuracy
+    accuracy_test: accuracy on test (hold_out) set
     """
     # split the data into training and testing
     if n > 0:
@@ -341,7 +348,7 @@ def self_projection(X,
         clf = SGDClassifier(loss='perceptron', n_jobs=n_jobs)
     elif classifier == 'DT':
         clf = DecisionTreeClassifier()
-    
+
     # mean cross validation score
     cvsm = 0
     if cv > 0:
@@ -354,18 +361,18 @@ def self_projection(X,
     print("Accuracy on the training set: %.4f" % accuracy)
     accuracy_test = clf.score(X_test, y_test)
     print("Accuracy on the hold-out set: %.4f" % accuracy_test)
-    
+
     # accuracy of the whole dataset
     if whole:
         accuracy = clf.score(X, cell_types)
         print("Accuracy on the whole set: %.4f" % accuracy)
-    
+
     # get predicted probability on the test set
     y_prob = None
     if not classifier in ['SH', 'PCP']:
         y_prob = clf.predict_proba(X_test)
     y_pred = clf.predict(X_test)
-    
+
     return y_prob, y_pred, y_test, clf, cvsm, accuracy_test
 
 
@@ -553,8 +560,8 @@ def merge_cluster(ad, old_id, new_id, groups):
     ad.obs[new_id].cat.categories = make_unique(groups.astype(str))
     ad.obs[new_id] = ad.obs[new_id].str.split('_').str[0]
     return ad
-    
-    
+
+
 def find_high_resolution(ad, resolution=4, n=100):
     cut = resolution
     while cut > 0.5:
@@ -589,18 +596,31 @@ def get_connection_matrix(ad_obs, key1, key2):
         if len(x)>0:
             for i,j in list(itertools.combinations(x.tolist(), 2)):
                 mat.loc[i,j] = mat.loc[j,i] = 1
-    return mat    
+    return mat
 
+def get_obsm_key(ad, basis = 'umap', set = True):
+    symbol = 'X'
+    key = '{}_{}'.format(symbol, basis)
+    ret_key = key
+    if key not in ad.obsm:
+        for k in ad.obsm:
+            f = k.split('_')
+            if f[0] == symbol and len(f)>1 and f[1] == basis:
+                ret_key = k
+                if set:
+                    ad.obsm[ret_key] = ad.obsm[k]
+                break
+    return ret_key
 
 def SCCAF_optimize_all(ad,
                        min_acc=0.9,
                        R1norm_cutoff=0.5,
                        R2norm_cutoff=0.05,
                        R1norm_step=0.01,
-                       R2norm_step=0.001, 
+                       R2norm_step=0.001,
                        prefix='L1',
                        min_i = 3,
-		       start = None,
+		               start = None,
                        start_iter = 0,
                        *args, **kwargs):
     """
@@ -635,7 +655,7 @@ def SCCAF_optimize_all(ad,
         if not start in ad.obs.keys():
             raise ValueError("`adata.obs['%s']` doesn't exist. Please assign the initial clustering first."%(start))
         ad.obs['%s_Round%d'%(prefix, start_iter)] = ad.obs[start]
-    
+
     clstr_old = len(ad.obs['%s_Round%d'%(prefix, start_iter)].unique())
     #'while acc < min_acc:
     for i in range(10):
@@ -649,7 +669,7 @@ def SCCAF_optimize_all(ad,
                                                      R1norm_cutoff=R1norm_cutoff,
                                                      R2norm_cutoff=R2norm_cutoff,
                                                      start_iter=start_iter,
-                                                     min_acc=min_acc, 
+                                                     min_acc=min_acc,
                                                      prefix=prefix,
                                                      *args, **kwargs)
         print("m1: %f" % m1)
@@ -657,17 +677,17 @@ def SCCAF_optimize_all(ad,
         print("Accuracy: %f" % acc)
         R1norm_cutoff = m1 - R1norm_step
         R2norm_cutoff = m2 - R2norm_step
-        
+
         clstr_new = len(ad.obs['%s_result'%prefix].unique())
-        
+
         if clstr_new >= clstr_old and i >= min_i:
             print("converged SCCAF_all!")
             break
-        
+
         if acc >=min_acc:
             break
-            
-            
+
+
 def SCCAF_optimize(ad,
                    prefix='L1',
                    use='raw',
@@ -774,6 +794,11 @@ def SCCAF_optimize(ad,
         assigned as the clustering optimization results.
     """
     # the space to use
+    obsmkey = 'X_{}'.format(basis)
+    if obsmkey not in ad.obsm and basis == 'umap':
+        # this is needed for some plots
+        logg.info("'{}' is missing in AnnData.obsm, calculate UMAP with Scanpy.tl.umap defaults ...".format(obsmkey))
+        sc.tl.umap(ad)
     X = None
     if use == 'raw':
         X = ad.raw.X
@@ -789,17 +814,32 @@ def SCCAF_optimize(ad,
         old_id = '%s_Round%d' % (prefix, i)
         new_id = '%s_Round%d' % (prefix, i + 1)
 
-        labels = np.sort(ad.obs[old_id].unique().astype(int)).astype(str)
+        # converting to string leads to problems in sklean.metrics
+        # labels = np.sort(ad.obs[old_id].unique().astype(int)).astype(str)
+        labels = np.sort(ad.obs[old_id].unique())
 
         # optimize
         y_prob, y_pred, y_test, clf, cvsm, acc = \
             self_projection(X, ad.obs[old_id], sparsity=sparsity, n=n,
                             fraction=fraction, classifier=classifier, n_jobs=n_jobs)
+        # y_prob, y_test: <class 'numpy.ndarray'>
+        # clf: <class 'sklearn.linear_model._logistic.LogisticRegression'>
+        if DEBUG:
+            # print("type(y_prob) = ",type(y_prob))
+            print("[DEBUG] cvsm = {:f}, acc = {:f}".format(cvsm, acc))
+            print("[DEBUG] dumping debug_y_[prob|test|pred].npy and debug_clf.bin")
+            np.save('debug_y_prob', y_prob)
+            np.save('debug_y_test', y_test)
+            np.save('debug_y_pred', y_pred)
+            np.save('debug_labels', labels)
+            dump(clf, 'debug_clf.bin')
+
+
         accs = [acc]
         ad.obs['%s_self-projection' % old_id] = clf.predict(X)
-        
+
         if plot:
-            aucs = plot_roc(y_prob, y_test, clf, cvsm=cvsm, acc=acc, title="Self-project ROC {}".format(old_id))
+            aucs = plot_roc(y_prob, y_test, clf, cvsm=cvsm, acc=acc, title="Self-project ROC {:s}".format(old_id))
             if mplotlib_backend:
                 mplotlib_backend.savefig()
                 plt.clf()
@@ -821,6 +861,7 @@ def SCCAF_optimize(ad,
         if use_projection:
             old_id1 = '%s_self-projection' % old_id
         for j in range(c_iter - 1):
+            print("Iteration {:d}".format(j+1))
             y_prob, y_pred, y_test, clf, _, acc = self_projection(X, ad.obs[old_id1], sparsity=sparsity, n=n,
                                                                   fraction=fraction, classifier=classifier, cv=0,
                                                                   n_jobs=n_jobs)
@@ -868,21 +909,21 @@ def SCCAF_optimize(ad,
             ad.obs['%s_result' % prefix] = ad.obs[old_id]
             print("Converge SCCAF_optimize no. cluster!")
             break
-        
+
         merge_cluster(ad, old_id1, new_id, groups)
-        
+
         if plot:
             sc.pl.scatter(ad, basis=basis, color=[new_id], color_map="RdYlBu_r", legend_loc='on data',
                           show=(mplotlib_backend is None))
             if mplotlib_backend:
                 mplotlib_backend.savefig()
                 plt.clf()
-        
+
         if len(np.unique(groups)) <= 1:
             ad.obs['%s_result' % prefix] = ad.obs[new_id]
             print("no clustering!")
             break
-    
+
     return ad, m1, m2, np.min(accs), i
 
 
@@ -1014,111 +1055,106 @@ def plot_heatmap_gray(X, title='', save=None, mplotlib_backend=None):
     else:
         plt.show()
 
+def plot_roc_per_celltype(
+    x, clf, plot_typ,
+    Xs, Ys, colors, fontsize,
+    min_auc_rc, max_auc_rc,
+    cvsm=None, acc=None,
+    legend_x = 0.5
+    ):
+    if colors:
+        n_colors = len(colors)
+    else:
+        n_colors = 1
+    if DEBUG:
+        sys.stderr.write(
+            "[DEBUG] plot_roc_per_celltype():"
+            "len(Xs) = {:d}, len(Ys) = {:d}, n_colors = {:d}, len(clf.classes_) = {:d}\n"
+            .format(len(Xs), len(Ys), n_colors, len(clf.classes_)))
+    if plot_typ == 'roc':
+        xlab = 'FPR'
+        ylab = 'TPR'
+        x.plot([0, 1], [0, 1], color='k', ls=':')
+    else:
+        xlab = 'Recall'
+        ylab = 'Precision'
+        x.plot([0, 1], [1, 0], color='k', ls=':')
+    x.set_xticks([0, 1])
+    x.set_yticks([0, 1])
+    for i, cell_type in enumerate(clf.classes_):
+        ic = i % n_colors
+        x.plot(Xs[i], Ys[i], c=colors[ic], lw=2, label=cell_type)
+    x.set_xlabel(xlab)
+    x.set_ylabel(ylab)
+    x.annotate(r'$AUC_{min}: %.3f$' % min_auc_rc, (legend_x, 0.4), fontsize=fontsize)
+    x.annotate(r'$AUC_{max}: %.3f$' % max_auc_rc, (legend_x, 0.3), fontsize=fontsize)
+    if cvsm:
+        x.annotate("CV: %.3f" % cvsm, (legend_x, 0.2), fontsize=fontsize)
+    if acc:
+        x.annotate("Test: %.3f" % acc, (legend_x, 0.1), fontsize=fontsize)
+    return
 
 def plot_roc(y_prob, y_test, clf, plot='both', save=None, title='', colors=None, cvsm=None, acc=None, fontsize=16):
     """
     y_prob, y_test, clf, plot=True, save=False, title ='', colors=None, cvsm=None, acc=None, fontsize=16):
     """
-    rc_aucs = [] #AUC
-    rp_aucs = [] # AUC from recall precision
-    fprs = [] #FPR
-    tprs = [] #TPR
-    prss = [] #Precision
-    recs = [] #Recall
-    for i, cell_type in enumerate(clf.classes_):
-        fpr, tpr, _ = metrics.roc_curve(y_test == cell_type, y_prob[:, i])
-        prs, rec, _ = metrics.precision_recall_curve(y_test == cell_type, y_prob[:, i])
-        fprs.append(fpr)
-        tprs.append(tpr)
-        prss.append(prs)
-        recs.append(rec)
-        rc_aucs.append(metrics.auc(fpr, tpr))
-        rp_aucs.append(metrics.auc(rec, prs))
-    
-    good_aucs = np.asarray(rc_aucs)
-    good_aucs = good_aucs[~np.isnan(good_aucs)]
-    min_auc_rc = np.min(good_aucs)
-    max_auc_rc = np.max(good_aucs)
-    
-    good_aucs = np.asarray(rp_aucs)
-    good_aucs = good_aucs[~np.isnan(good_aucs)]
-    min_auc_rp = np.min(good_aucs)
-    max_auc_rp = np.max(good_aucs)
-    
-    if plot in ['both','roc','prc']:
-        if colors is None:
-            if len(clf.classes_) < 21:
-                colors = default_20
-            elif len(clf.classes_) < 27:
-                colors = default_28
-            else:
-                colors = default_102
-        if plot == 'both':
-            
-            fig, ax = plt.subplots(1, 2, sharey=True)
-            ax[0].plot([0, 1], [0, 1], color='k', ls=':')
-            ax[0].set_xticks([0, 1])
-            ax[0].set_yticks([0, 1])
-            ax[1].plot([0, 1], [1, 0], color='k', ls=':')
-            ax[1].set_xticks([0, 1])
-            ax[1].set_yticks([0, 1])
-            Xs = fprs
-            Ys = tprs
-            for i, cell_type in enumerate(clf.classes_):
-                ax[0].plot(Xs[i], Ys[i], c=colors[i], lw=2, label=cell_type)
-            ax[0].set_xlabel('FPR')
-            ax[0].set_ylabel('TPR')
-            Xs = recs
-            Ys = prss
-            for i, cell_type in enumerate(clf.classes_):
-                ax[1].plot(Xs[i], Ys[i], c=colors[i], lw=2, label=cell_type)
-            ax[1].set_xlabel('Recall')
-            ax[1].set_ylabel('Precision')
-            
-            ax[0].annotate(r'$AUC_{min}: %.3f$' % min_auc_rc, (0.5, 0.4), fontsize=fontsize)
-            ax[0].annotate(r'$AUC_{max}: %.3f$' % max_auc_rc, (0.5, 0.3), fontsize=fontsize)
-            ax[1].annotate(r'$AUC_{min}: %.3f$' % min_auc_rp, (0.5, 0.4), fontsize=fontsize)
-            ax[1].annotate(r'$AUC_{max}: %.3f$' % max_auc_rp, (0.5, 0.3), fontsize=fontsize)
-            if cvsm:
-                ax[0].annotate("CV: %.3f" % cvsm, (0.5, 0.2), fontsize=fontsize)
-                ax[1].annotate("CV: %.3f" % cvsm, (0.5, 0.2), fontsize=fontsize)
-            if acc:
-                ax[0].annotate("Test: %.3f" % acc, (0.5, 0.1), fontsize=fontsize)
-                ax[1].annotate("Test: %.3f" % acc, (0.5, 0.1), fontsize=fontsize)
-            
+    rc_aucs = []
+    plot_types = ['roc', 'prc']
+    if colors is None:
+        if len(clf.classes_) < 21:
+            colors = default_20
+        elif len(clf.classes_) < 29:
+            colors = default_28
         else:
-            fig, ax = plt.subplots()
-            ax.set_xticks([0, 1])
-            ax.set_yticks([0, 1])
-            if plot == 'roc':
-                Xs = fprs
-                Ys = tprs
-                ax.set_xlabel('FPR')
-                ax.set_ylabel('TPR')
-                ax.plot([0, 1], [0, 1], color='k', ls=':')
-                pos = 0.5
-                ax.annotate(r'$AUC_{min}: %.3f$' % min_auc_rc, (pos, 0.4), fontsize=fontsize)
-                ax.annotate(r'$AUC_{max}: %.3f$' % max_auc_rc, (pos, 0.3), fontsize=fontsize)
+            colors = default_102
+    is_roc_and_prc = plot == 'both'
+    if is_roc_and_prc:
+        fig, ax = plt.subplots(1, 2, sharey=True)
+    else:
+        fig, ax = plt.subplots()
+
+    plot_types = ['roc', 'prc']
+    for j, pltyp in enumerate(plot_types):
+        aucs = [] #AUC
+        Xs = [] #FPR (pltyp == 'roc') or Precision (pltyp == 'prc')
+        Ys = [] #TPR (pltyp == 'roc') or Recall (pltyp == 'prc')
+        is_roc = 'roc' == pltyp
+        for i, cell_type in enumerate(clf.classes_):
+            if is_roc:
+                xr, yr, _ = metrics.roc_curve(y_test == cell_type, y_prob[:, i])
+                # fpr, tpr
             else:
-                Xs = recs
-                Ys = prss
-                ax.set_xlabel('Recall')
-                ax.set_ylabel('Precision')
-                ax.plot([0, 1], [1, 0], color='k', ls=':')
-                pos = 0
-                ax.annotate(r'$AUC_{min}: %.3f$' % min_auc_rp, (pos, 0.4), fontsize=fontsize)
-                ax.annotate(r'$AUC_{max}: %.3f$' % max_auc_rp, (pos, 0.3), fontsize=fontsize)
-            for i, cell_type in enumerate(clf.classes_):
-                ax.plot(Xs[i], Ys[i], c=colors[i], lw=2, label=cell_type)
+                yr, xr, _ = metrics.precision_recall_curve(y_test == cell_type, y_prob[:, i])
+                #prs, rec
+            Xs.append(xr)
+            Ys.append(yr)
+            try:
+                auc = metrics.auc(xr, yr)
+            except ValueError:
+                auc = np.nan
+            aucs.append(auc)
+        if is_roc:
+            rc_aucs = aucs
+        if pltyp != plot and not is_roc_and_prc:
+            continue
+        good_aucs = np.asarray(aucs)
+        good_aucs = good_aucs[~np.isnan(good_aucs)]
+        min_auc = np.min(good_aucs)
+        max_auc = np.max(good_aucs)
+        legend_x_pos = 0.5
+        if is_roc_and_prc:
+            x = ax[j]
+        else:
+            x = ax
+            if not is_roc:
+                legend_x_pos = 0
+        plot_roc_per_celltype(x, clf, pltyp,
+            Xs, Ys, colors, fontsize,
+            min_auc, max_auc, cvsm, acc, legend_x = legend_x_pos)
 
-            if cvsm:
-                ax.annotate("CV: %.3f" % cvsm, (pos, 0.2), fontsize=fontsize)
-            if acc:
-                ax.annotate("Test: %.3f" % acc, (pos, 0.1), fontsize=fontsize)
+    if save:
+        plt.savefig(save)
 
-        if save:
-            plt.savefig(save)
-        
     return rc_aucs
 
 
@@ -1346,17 +1382,17 @@ import h5py
 def readHCA(fin):
     f = h5py.File(fin, 'r')
     data = f[list(f.keys())[0]]
-    X = csr_matrix((np.array(data.get("data")), 
-                np.array(data.get("indices")), 
-                np.array(data.get("indptr"))), 
+    X = csr_matrix((np.array(data.get("data")),
+                np.array(data.get("indices")),
+                np.array(data.get("indptr"))),
                 shape=np.array(data.get("shape"))[::-1])
     ad = sc.AnnData(X)
     ad.obs_names = np.array(data.get("barcodes")).astype(str)
     ad.var_names = np.array(data.get("gene_names")).astype(str)
     ad.var['ensembl_gene'] = np.array(data.get("genes")).astype(str)
     return(ad)
-    
-    
+
+
 def sc_workflow(ad, prefix='L1', resolution=1.5, n_pcs=15, do_tsne=True):
     sc.pp.normalize_per_cell(ad, counts_per_cell_after=1e4)
     filter_result = sc.pp.filter_genes_dispersion(
@@ -1478,7 +1514,7 @@ def sc_pp_regress_out(adata, keys, n_jobs=None, copy=False):
 
 
 def regress_out(metadata, exprs, covariate_formula, design_formula='1', rcond=-1):
-    """ Implementation of limma's removeBatchEffect function, 
+    """ Implementation of limma's removeBatchEffect function,
     a copy from NaiveDE (https://github.com/Teichlab/NaiveDE)
     """
     # Ensure intercept is not part of covariates
@@ -1494,4 +1530,3 @@ def regress_out(metadata, exprs, covariate_formula, design_formula='1', rcond=-1
 
     beta = coefficients[covariate_matrix.shape[1]:]
     return exprs - design_matrix.dot(beta).T
-

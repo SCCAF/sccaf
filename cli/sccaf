@@ -57,6 +57,9 @@ parser.add_argument("--conf-sampling-iterations", action="store", type=int, defa
                          "Higher numbers will produce more stable results in terms of rounds, but will take longer. "
                          "Default: 3."
                     )
+parser.add_argument("--use-pca",
+                    help="Use PCA components for assesment if available (default: False)",
+                    action='store_true')
 
 args = parser.parse_args()
 
@@ -82,11 +85,17 @@ else:
         exit(1)
     y = ad.obs[args.slot_for_existing_clustering]
 
-raw = getattr(ad, 'raw')
-if raw:
-    X = raw.X
+
+use_matrix_type = 'raw'
+if args.use_pca and 'X_pca' in ad.obsm_keys():
+    use_matrix_type = 'pca'
+    X = ad.obsm['X_pca']
 else:
-    X = ad.X
+    raw = getattr(ad, 'raw')
+    if raw:
+        X = raw.X
+    else:
+        X = ad.X
 
 if not args.skip_assessment:
     y_prob, y_pred, y_test, clf, cvsm, acc = sf.SCCAF_assessment(X, y, n_jobs=args.cores)
@@ -124,12 +133,15 @@ if args.optimise:
         from matplotlib.backends.backend_pdf import PdfPages
         backend = PdfPages(args.optimisation_plots_output)
 
+
     if args.undercluster_boundary:
         sf.SCCAF_optimize_all(min_acc=args.min_accuracy, ad=ad, plot=plots, n_jobs=args.cores,
-                              low_res=args.undercluster_boundary, mplotlib_backend=backend, c_iter=args.conf_sampling_iterations)
+                              low_res=args.undercluster_boundary, mplotlib_backend=backend, c_iter=args.conf_sampling_iterations,
+                              use = use_matrix_type)
     else:
         sf.SCCAF_optimize_all(min_acc=args.min_accuracy, ad=ad, plot=plots, n_jobs=args.cores,
-                              mplotlib_backend=backend, c_iter=args.conf_sampling_iterations)
+                              mplotlib_backend=backend, c_iter=args.conf_sampling_iterations,
+                              use = use_matrix_type)
     logging.info("Run optimise: DONE")
     y_prob, y_pred, y_test, clf, cvsm, acc = sf.SCCAF_assessment(X, ad.obs['{}_result'.format(args.prefix)],
                                                                  n_jobs=args.cores)
