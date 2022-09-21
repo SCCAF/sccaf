@@ -1020,7 +1020,7 @@ def plot_heatmap_gray(X, title='', save=None, mplotlib_backend=None):
         plt.show()
 
 
-def plot_roc(y_prob, y_test, clf, plot='both', save=None, title='', colors=None, cvsm=None, acc=None, fontsize=16, legend=None):
+def plot_roc(y_prob, y_test, clf, plot='both', save=None, title='', colors=None, cvsm=None, acc=None, fontsize=16, legend=False):
     """
     y_prob, y_test, clf, plot=True, save=False, title ='', colors=None, cvsm=None, acc=None, fontsize=16):
     """
