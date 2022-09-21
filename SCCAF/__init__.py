@@ -781,6 +781,8 @@ def SCCAF_optimize(ad,
         if 'X_pca' not in ad.obsm.keys():
             raise ValueError("`adata.obsm['X_pca']` doesn't exist. Run `sc.pp.pca` first.")
         X = ad.obsm['X_pca']
+    elif 'X_%s'%use in ad.obsm.dtype.fields:
+	X = ad.obsm['X_%s'%use]
     else:
         X = ad[:,ad.var['highly_variable']].X
 
@@ -1068,12 +1070,14 @@ def plot_roc(y_prob, y_test, clf, plot='both', save=None, title='', colors=None,
                 ax[0].plot(Xs[i], Ys[i], c=colors[i], lw=2, label=cell_type)
             ax[0].set_xlabel('FPR')
             ax[0].set_ylabel('TPR')
-            # ysong modify add legend 10 Mar 2022
+            # add legend
             Xs = recs
             Ys = prss
             for i, cell_type in enumerate(clf.classes_):
                 ax[1].plot(Xs[i], Ys[i], c=colors[i], lw=2, label=cell_type)
             ax[1].set_xlabel('Recall')
+            ax[1].set_ylabel('Precision')
+
             ax[1].legend(bbox_to_anchor=(1.04,0.5), loc="center left")
             ax[0].annotate(r'$AUC_{min}: %.3f$' % min_auc_rc, (0.5, 0.4), fontsize=fontsize)
             ax[0].annotate(r'$AUC_{max}: %.3f$' % max_auc_rc, (0.5, 0.3), fontsize=fontsize)
