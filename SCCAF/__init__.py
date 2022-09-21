@@ -769,7 +769,7 @@ def SCCAF_optimize(ad,
     min_acc: `float`
 		the minimum total accuracy to be achieved. Above this threshold, the optimization will stop.
     legend: `bool` optional (default: False)
-        If also plot legend for the AUC curve.
+        If also plot legend for the ROC curve.
 
     return
     -----
