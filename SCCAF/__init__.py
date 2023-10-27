@@ -694,7 +694,8 @@ def SCCAF_optimize(ad,
                    dist_cutoff=8,
                    classifier="LR",
                    mplotlib_backend=None,
-                   min_acc=1):
+                   min_acc=1,
+                   legend=False):
     """
     This is a self-projection confusion matrix directed cluster optimization function.
 
@@ -767,6 +768,8 @@ def SCCAF_optimize(ad,
         PdfPages).
     min_acc: `float`
 		the minimum total accuracy to be achieved. Above this threshold, the optimization will stop.
+    legend: `bool` optional (default: False)
+        If also plot legend for the ROC curve.
 
     return
     -----
@@ -782,7 +785,7 @@ def SCCAF_optimize(ad,
             raise ValueError("`adata.obsm['X_pca']` doesn't exist. Run `sc.pp.pca` first.")
         X = ad.obsm['X_pca']
     elif 'X_%s'%use in ad.obsm.dtype.fields:
-	X = ad.obsm['X_%s'%use]
+        X = ad.obsm['X_%s'%use]
     else:
         X = ad[:,ad.var['highly_variable']].X
 
@@ -801,7 +804,7 @@ def SCCAF_optimize(ad,
         ad.obs['%s_self-projection' % old_id] = clf.predict(X)
         
         if plot:
-            aucs = plot_roc(y_prob, y_test, clf, cvsm=cvsm, acc=acc, title="Self-project ROC {}".format(old_id))
+            aucs = plot_roc(y_prob, y_test, clf, cvsm=cvsm, acc=acc, title="Self-project ROC {}".format(old_id), legend=legend)
             if mplotlib_backend:
                 mplotlib_backend.savefig()
                 plt.clf()
@@ -1017,7 +1020,7 @@ def plot_heatmap_gray(X, title='', save=None, mplotlib_backend=None):
         plt.show()
 
 
-def plot_roc(y_prob, y_test, clf, plot='both', save=None, title='', colors=None, cvsm=None, acc=None, fontsize=16):
+def plot_roc(y_prob, y_test, clf, plot='both', save=None, title='', colors=None, cvsm=None, acc=None, fontsize=16, legend=False):
     """
     y_prob, y_test, clf, plot=True, save=False, title ='', colors=None, cvsm=None, acc=None, fontsize=16):
     """
@@ -1076,7 +1079,9 @@ def plot_roc(y_prob, y_test, clf, plot='both', save=None, title='', colors=None,
                 ax[1].plot(Xs[i], Ys[i], c=colors[i], lw=2, label=cell_type)
             ax[1].set_xlabel('Recall')
             ax[1].set_ylabel('Precision')
-            
+            ## add legend if required
+            if legend == True:
+                ax[1].legend(bbox_to_anchor=(1.04,0.5), loc="center left")
             ax[0].annotate(r'$AUC_{min}: %.3f$' % min_auc_rc, (0.5, 0.4), fontsize=fontsize)
             ax[0].annotate(r'$AUC_{max}: %.3f$' % max_auc_rc, (0.5, 0.3), fontsize=fontsize)
             ax[1].annotate(r'$AUC_{min}: %.3f$' % min_auc_rp, (0.5, 0.4), fontsize=fontsize)
